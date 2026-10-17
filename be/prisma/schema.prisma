@@ -1,0 +1,347 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes", "views"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Unit {
+  id          String       @id @db.Uuid
+  code        String       @unique @db.VarChar
+  name        String       @db.VarChar
+  unitType    String?      @map("unit_type") @db.VarChar
+  sortOrder   Int          @default(0) @map("sort_order")
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime     @map("updated_at") @db.Timestamp(6)
+  user        User?
+  evaluations Evaluation[]
+
+  @@map("units")
+}
+
+model User {
+  id                    String              @id @db.Uuid
+  username              String              @unique @db.VarChar
+  passwordHash          String              @map("password_hash") @db.VarChar
+  mustChangePassword    Boolean             @default(true) @map("must_change_password")
+  fullName              String              @map("full_name") @db.VarChar
+  email                 String?             @unique @db.VarChar
+  phone                 String?             @db.VarChar
+  role                  String              @db.VarChar
+  unitId                String?             @unique(map: "users_unit_id_idx", where: raw("(unit_id IS NOT NULL)")) @map("unit_id") @db.Uuid
+  isActive              Boolean             @default(true) @map("is_active")
+  lastLoginAt           DateTime?           @map("last_login_at") @db.Timestamp(6)
+  createdAt             DateTime            @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime            @map("updated_at") @db.Timestamp(6)
+  unit                  Unit?               @relation(fields: [unitId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  refreshTokens         RefreshToken[]
+  createdPeriods        EvaluationPeriod[]   @relation("PeriodCreator")
+  finalizedEvaluations  Evaluation[]         @relation("EvaluationFinalizer")
+  reviewedScores        CriterionScore[]     @relation("CriterionReviewer")
+  uploadedEvidences     Evidence[]           @relation("EvidenceUploader")
+  authoredFeedbacks     EvaluationFeedback[]
+  statusHistories       StatusHistory[]
+  notifications         Notification[]
+  webPushSubscriptions  WebPushSubscription[]
+  auditLogs             AuditLog[]
+  reportExports         ReportExport[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash") @db.VarChar
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamp(6)
+  createdAt DateTime @map("created_at") @db.Timestamp(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("refresh_tokens")
+}
+
+model EvaluationPeriod {
+  id               String            @id @db.Uuid
+  year             Int               @unique
+  name             String            @db.VarChar
+  phase            String            @default("SETUP") @db.VarChar
+  maxTotalScore    Decimal           @default(300) @map("max_total_score") @db.Decimal
+  selfEvalStart    DateTime?         @map("self_eval_start") @db.Timestamp(6)
+  selfEvalDeadline DateTime?         @map("self_eval_deadline") @db.Timestamp(6)
+  supplementHours  Int               @default(48) @map("supplement_hours")
+  publishedAt      DateTime?         @map("published_at") @db.Timestamp(6)
+  finalizedAt      DateTime?         @map("finalized_at") @db.Timestamp(6)
+  createdById      String            @map("created_by_id") @db.Uuid
+  createdAt        DateTime          @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime          @map("updated_at") @db.Timestamp(6)
+  creator          User              @relation("PeriodCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ratingThresholds RatingThreshold[]
+  criteria         Criterion[]
+  evaluations      Evaluation[]
+  reportExports    ReportExport[]
+
+  @@map("evaluation_periods")
+}
+
+model RatingThreshold {
+  id           String          @id @db.Uuid
+  periodId     String          @map("period_id") @db.Uuid
+  rating       String          @db.VarChar
+  label        String          @db.VarChar
+  minPercent   Decimal         @map("min_percent") @db.Decimal
+  minExclusive Boolean         @default(false) @map("min_exclusive")
+  color        String?         @db.VarChar
+  period       EvaluationPeriod @relation(fields: [periodId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([periodId, rating], map: "rating_thresholds_period_id_rating_idx")
+  @@map("rating_thresholds")
+}
+
+model Criterion {
+  id                  String           @id @db.Uuid
+  periodId            String           @map("period_id") @db.Uuid
+  parentId            String?          @map("parent_id") @db.Uuid
+  code                String           @db.VarChar
+  name                String           @db.Text
+  description         String?          @db.Text
+  maxScore            Decimal          @map("max_score") @db.Decimal
+  evidenceRequirement String?          @map("evidence_requirement") @db.Text
+  allowText           Boolean          @default(true) @map("allow_text")
+  allowFile           Boolean          @default(true) @map("allow_file")
+  allowLink           Boolean          @default(true) @map("allow_link")
+  evidenceRequired    Boolean          @default(true) @map("evidence_required")
+  sortOrder           Int              @map("sort_order")
+  createdAt           DateTime         @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime         @map("updated_at") @db.Timestamp(6)
+  period              EvaluationPeriod @relation(fields: [periodId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parent              Criterion?       @relation("CriterionTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children            Criterion[]      @relation("CriterionTree")
+  scores              CriterionScore[]
+
+  @@unique([periodId, code], map: "criteria_period_id_code_idx")
+  @@map("criteria")
+}
+
+model Evaluation {
+  id                    String              @id @db.Uuid
+  periodId              String              @map("period_id") @db.Uuid
+  unitId                String              @map("unit_id") @db.Uuid
+  status                String              @default("DRAFT") @db.VarChar
+  submittedAt           DateTime?           @map("submitted_at") @db.Timestamp(6)
+  autoLockedAt          DateTime?           @map("auto_locked_at") @db.Timestamp(6)
+  firstReviewedAt       DateTime?           @map("first_reviewed_at") @db.Timestamp(6)
+  supplementRequestedAt DateTime?           @map("supplement_requested_at") @db.Timestamp(6)
+  supplementDeadline    DateTime?           @map("supplement_deadline") @db.Timestamp(6)
+  supplementSubmittedAt DateTime?           @map("supplement_submitted_at") @db.Timestamp(6)
+  finalizedAt           DateTime?           @map("finalized_at") @db.Timestamp(6)
+  finalizedById         String?             @map("finalized_by_id") @db.Uuid
+  finalScore            Decimal?            @map("final_score") @db.Decimal
+  finalPercent          Decimal?            @map("final_percent") @db.Decimal
+  finalRating           String?             @map("final_rating") @db.VarChar
+  createdAt             DateTime            @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime            @map("updated_at") @db.Timestamp(6)
+  period                EvaluationPeriod    @relation(fields: [periodId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  unit                  Unit                @relation(fields: [unitId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  finalizedBy           User?               @relation("EvaluationFinalizer", fields: [finalizedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  criterionScores       CriterionScore[]
+  feedbacks             EvaluationFeedback[]
+  statusHistories       StatusHistory[]
+  reportExports         ReportExport[]
+
+  @@unique([periodId, unitId], map: "evaluations_period_id_unit_id_idx")
+  @@index([periodId, status])
+  @@map("evaluations")
+}
+
+model CriterionScore {
+  id              String      @id @db.Uuid
+  evaluationId    String      @map("evaluation_id") @db.Uuid
+  criterionId     String      @map("criterion_id") @db.Uuid
+  selfScore       Decimal?    @map("self_score") @db.Decimal
+  selfNote        String?     @map("self_note") @db.Text
+  adminScore      Decimal?    @map("admin_score") @db.Decimal
+  adminComment    String?     @map("admin_comment") @db.Text
+  needsSupplement Boolean     @default(false) @map("needs_supplement")
+  supplementNote  String?     @map("supplement_note") @db.Text
+  reviewedById    String?     @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?   @map("reviewed_at") @db.Timestamp(6)
+  createdAt       DateTime    @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime    @map("updated_at") @db.Timestamp(6)
+  evaluation      Evaluation @relation(fields: [evaluationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  criterion       Criterion  @relation(fields: [criterionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reviewedBy      User?      @relation("CriterionReviewer", fields: [reviewedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  evidences       Evidence[]
+
+  @@unique([evaluationId, criterionId], map: "criterion_scores_evaluation_id_criterion_id_idx")
+  @@map("criterion_scores")
+}
+
+model Evidence {
+  id              String         @id @db.Uuid
+  criterionScoreId String        @map("criterion_score_id") @db.Uuid
+  uploaderId      String         @map("uploader_id") @db.Uuid
+  kind            String         @db.VarChar
+  round           String         @default("INITIAL") @db.VarChar
+  fileName        String?        @map("file_name") @db.VarChar
+  mimeType        String?        @map("mime_type") @db.VarChar
+  sizeBytes       BigInt?        @map("size_bytes")
+  storagePath     String?        @map("storage_path") @db.VarChar
+  externalUrl     String?        @map("external_url") @db.VarChar
+  description     String?        @db.Text
+  previewStatus   String         @default("NOT_REQUIRED") @map("preview_status") @db.VarChar
+  previewPath     String?        @map("preview_path") @db.VarChar
+  createdAt       DateTime       @map("created_at") @db.Timestamp(6)
+  criterionScore  CriterionScore @relation(fields: [criterionScoreId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  uploader        User           @relation("EvidenceUploader", fields: [uploaderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([criterionScoreId])
+  @@map("evidences")
+}
+
+model EvaluationFeedback {
+  id           String     @id @db.Uuid
+  evaluationId String     @map("evaluation_id") @db.Uuid
+  authorId     String     @map("author_id") @db.Uuid
+  type         String     @db.VarChar
+  content      String     @db.Text
+  createdAt    DateTime   @map("created_at") @db.Timestamp(6)
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  author       User       @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([evaluationId, createdAt])
+  @@map("evaluation_feedbacks")
+}
+
+model StatusHistory {
+  id           String     @id @db.Uuid
+  evaluationId String     @map("evaluation_id") @db.Uuid
+  actorId      String?    @map("actor_id") @db.Uuid
+  fromStatus   String?    @map("from_status") @db.VarChar
+  toStatus     String     @map("to_status") @db.VarChar
+  comment      String?    @db.Text
+  createdAt    DateTime   @map("created_at") @db.Timestamp(6)
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  actor        User?      @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([evaluationId, createdAt])
+  @@map("status_histories")
+}
+
+model Notification {
+  id          String    @id @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  channel     String    @default("SYSTEM") @db.VarChar
+  type        String    @db.VarChar
+  title       String    @db.VarChar
+  body        String    @db.Text
+  refType     String?   @map("ref_type") @db.VarChar
+  refId       String?   @map("ref_id") @db.Uuid
+  isRead      Boolean   @default(false) @map("is_read")
+  scheduledAt DateTime? @map("scheduled_at") @db.Timestamp(6)
+  sentAt      DateTime? @map("sent_at") @db.Timestamp(6)
+  createdAt   DateTime  @map("created_at") @db.Timestamp(6)
+  user        User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model WebPushSubscription {
+  id             String    @id @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  endpoint       String    @unique @db.Text
+  p256dh         String    @db.VarChar
+  auth           String    @db.VarChar
+  expirationTime BigInt?   @map("expiration_time")
+  userAgent      String?   @map("user_agent") @db.VarChar
+  createdAt      DateTime  @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @map("updated_at") @db.Timestamp(6)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamp(6)
+  user           User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, revokedAt])
+  @@map("web_push_subscriptions")
+}
+
+model AuditLog {
+  id        String   @id @db.Uuid
+  actorId   String?  @map("actor_id") @db.Uuid
+  action    String   @db.VarChar
+  entity    String   @db.VarChar
+  entityId  String   @map("entity_id") @db.VarChar
+  before    Json?    @db.Json
+  after     Json?    @db.Json
+  ip        String?  @db.VarChar
+  createdAt DateTime @map("created_at") @db.Timestamp(6)
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model ReportExport {
+  id           String           @id @db.Uuid
+  periodId     String           @map("period_id") @db.Uuid
+  evaluationId String?          @map("evaluation_id") @db.Uuid
+  reportType   String           @map("report_type") @db.VarChar
+  format       String           @db.VarChar
+  storagePath  String           @map("storage_path") @db.VarChar
+  createdById  String           @map("created_by_id") @db.Uuid
+  createdAt    DateTime         @map("created_at") @db.Timestamp(6)
+  period       EvaluationPeriod @relation(fields: [periodId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  evaluation   Evaluation?      @relation(fields: [evaluationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy    User             @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("report_exports")
+}
+
+view EvaluationTotals {
+  evaluationId   String    @unique @map("evaluation_id") @db.Uuid
+  periodId       String    @map("period_id") @db.Uuid
+  unitId         String    @map("unit_id") @db.Uuid
+  status         String    @db.VarChar
+  submittedAt    DateTime? @map("submitted_at") @db.Timestamp(6)
+  maxTotalScore  Decimal   @map("max_total_score") @db.Decimal
+  selfTotal      Decimal   @map("self_total") @db.Decimal
+  currentTotal   Decimal   @map("current_total") @db.Decimal
+  currentPercent Decimal   @map("current_percent") @db.Decimal
+  suggestedRating String?  @map("suggested_rating") @db.VarChar
+
+  @@map("v_evaluation_totals")
+}
+
+view Leaderboard {
+  evaluationId   String    @unique @map("evaluation_id") @db.Uuid
+  periodId       String    @map("period_id") @db.Uuid
+  unitId         String    @map("unit_id") @db.Uuid
+  status         String    @db.VarChar
+  submittedAt    DateTime? @map("submitted_at") @db.Timestamp(6)
+  maxTotalScore  Decimal   @map("max_total_score") @db.Decimal
+  selfTotal      Decimal   @map("self_total") @db.Decimal
+  currentTotal   Decimal   @map("current_total") @db.Decimal
+  currentPercent Decimal   @map("current_percent") @db.Decimal
+  suggestedRating String?  @map("suggested_rating") @db.VarChar
+  unitCode       String    @map("unit_code") @db.VarChar
+  unitName       String    @map("unit_name") @db.VarChar
+  scoreRank      BigInt    @map("score_rank")
+  rank           BigInt    @db.BigInt
+
+  @@map("v_leaderboard")
+}
+
+view CriteriaDeductions {
+  periodId           String  @map("period_id") @db.Uuid
+  criterionId        String  @unique @map("criterion_id") @db.Uuid
+  code               String  @db.VarChar
+  name               String
+  unitsDeducted      BigInt  @map("units_deducted")
+  totalPointsDeducted Decimal @map("total_points_deducted") @db.Decimal
+
+  @@map("v_criteria_deductions")
+}

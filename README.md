@@ -1,7 +1,4 @@
 # PROJECT ĐÁNH GIÁ KPI
-
-Dự án gồm tài liệu, frontend React và backend NestJS. Cấu trúc được tổ chức theo từng lớp chức năng để thuận tiện phát triển, bảo trì và mở rộng.
-
 ## Tổng quan
 
 | Thư mục | Mô tả |
@@ -10,17 +7,18 @@ Dự án gồm tài liệu, frontend React và backend NestJS. Cấu trúc đư�
 | `fe/` | Ứng dụng frontend sử dụng React, Vite và Ant Design. |
 | `be/` | Backend sử dụng NestJS, PostgreSQL, Prisma, Supabase và Swagger. |
 
-## Công nghệ chính
+## Công nghệ
 
-## Công nghệ chính
+- **Frontend:** React 19, Vite, Ant Design, React Router, Axios.
+- **Backend:** NestJS 11, Node.js, TypeScript, Swagger.
+- **Cơ sở dữ liệu:** PostgreSQL 16, Prisma 7 (schema, client, migrations và seed).
+- **Thông báo:** Web Push qua `web-push` ở backend; service worker ở frontend. Socket.IO không được dùng.
+- **Xuất báo cáo:** `exceljs` cho Excel và `jspdf`/`jspdf-autotable` cho PDF ở frontend; `docx` ở backend để chuẩn bị tạo Word.
+- **Upload:** NestJS `platform-express` cung cấp Multer middleware; API nhận/lưu file và preview minh chứng chưa được triển khai.
+- **Lưu file:** Chưa tích hợp storage provider. Có thể chọn local storage cho phát triển hoặc Supabase Storage/object storage khi triển khai.
 
-- **Frontend:** React, Vite, Ant Design, Axios, Socket.io Client.
-- **Backend:** NestJS, PostgreSQL, Prisma, Supabase, Swagger, Socket.io.
-- **Xác thực & Phân quyền:** JWT (JSON Web Token) kết hợp RBAC với các Guard (Backend) và Protected Route (Frontend).
-- **Xuất báo cáo:** Excel và PDF ở frontend/backend tùy theo chức năng.
+Các thư viện xuất file đã được cài nhưng chức năng tạo báo cáo chưa được xây dựng. Tương tự, Web Push đã có schema, API nền tảng và service worker nhưng cần tích hợp xác thực cùng các sự kiện nghiệp vụ trước khi dùng xuyên suốt.
 ## Mô hình tổ chức dự án
-
-Dự án được tổ chức theo mô hình **Monorepo**: tài liệu, frontend và backend cùng nằm trong một repository, nhưng mỗi phần có thư mục và bộ cấu hình riêng.
 
 - **Frontend:** tổ chức kết hợp theo lớp dùng chung và nghiệp vụ. Các phần như `components/`, `hooks/`, `services/`, `routes/` là các lớp/tài nguyên dùng chung; `pages/` được chia theo nghiệp vụ như đánh giá, đề xuất KPI, báo cáo và người dùng.
 - **Backend:** tổ chức theo **Modular Monolith** (ứng dụng đơn thể chia module nghiệp vụ). Mỗi module trong `src/modules/` phụ trách một nhóm chức năng; các thành phần dùng chung nằm trong `common/`, còn truy cập cơ sở dữ liệu được quản lý qua Prisma.
@@ -53,7 +51,7 @@ fe/
 │   ├── routes/                # React Router và Protected Routes (RBAC)
 │   ├── services/              # Các lời gọi API bằng Axios
 │   ├── sockets/               # Socket.io client listeners
-│   ├── utils/                 # Tiện ích xuất Excel (xlsx), PDF (jspdf)
+│   ├── utils/                 # Tiện ích xuất Excel (ExcelJS), PDF (jsPDF)
 │   ├── App.jsx
 │   └── main.jsx
 ├── .env                       # Biến môi trường frontend
@@ -85,7 +83,7 @@ Backend chia module theo nghiệp vụ và bảng dữ liệu, sử dụng Prism
 be/
 ├── prisma/
 │   ├── schema.prisma          # Định nghĩa model cơ sở dữ liệu
-│   ├── seed.ts                # Dữ liệu mẫu: Admin, KPI Axes, Departments
+│   ├── seed.ts                # Dữ liệu mẫu: Admin, 34 đơn vị, kỳ thi đua và ngưỡng xếp loại
 │   └── migrations/            # Lịch sử thay đổi schema
 ├── src/
 │   ├── common/
@@ -107,7 +105,7 @@ be/
 │   │   ├── kpi-proposals/     # Đề xuất KPI và duyệt đề xuất
 │   │   ├── evidences/         # Minh chứng và dịch vụ lưu trữ Supabase
 │   │   ├── exports/           # Xuất báo cáo tổng hợp Excel/PDF
-│   │   ├── notifications/     # Socket.io Gateway và Dispatcher
+│   │   ├── notifications/     # REST API, Web Push subscriptions và Dispatcher
 │   │   └── audit-logs/        # Ghi lịch sử hoạt động hệ thống
 │   ├── app.module.ts
 │   └── main.ts                # Khởi tạo ứng dụng và Swagger DocumentBuilder
@@ -134,17 +132,3 @@ Ví dụ tạo API **lấy danh sách đề xuất KPI**:
 **Luồng request/response đầy đủ:** `KpiProposalListPage.jsx` → `kpiProposalService.js` → `KpiProposalsController` → `KpiProposalsService` → `PrismaService` → PostgreSQL → trả kết quả ngược lại theo cùng chuỗi để page hiển thị.
 
 Nói ngắn gọn: **Controller nhận request và chuyển việc cho Service; Service xử lý nghiệp vụ và gọi database.** DTO kiểm tra dữ liệu đầu vào. `common/guards/` kiểm tra đăng nhập/phân quyền; `common/interceptors/` xử lý request/response dùng chung. Chỉ sửa `main.ts` hoặc `config/` khi cần thay đổi cấu hình toàn ứng dụng.
-
-Các module nghiệp vụ:
-
-- **`auth/`**: đăng nhập, refresh token, JWT strategy và DTO xác thực.
-- **`users/`**: người dùng, phòng ban và các thao tác quản trị liên quan.
-- **`evaluation-periods/`**: đợt đánh giá và ngưỡng xếp loại.
-- **`evaluations/`**: phiếu, điểm và tổng hợp đánh giá.
-- **`kpis/`**: KPI chuẩn, phân công và điểm KPI.
-- **`kpi-proposals/`**: đề xuất KPI và quy trình duyệt.
-- **`evidences/`**: minh chứng và tích hợp lưu trữ Supabase.
-- **`exports/`**: tổng hợp dữ liệu và tạo báo cáo Excel/PDF.
-- **`notifications/`**: phát thông báo realtime qua Socket.io.
-- **`audit-logs/`**: ghi nhận lịch sử hoạt động theo quy ước nghiệp vụ.
-

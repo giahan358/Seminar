@@ -1,0 +1,131 @@
+
+.layoutContainer {
+  height: 100vh;
+  overflow: hidden; 
+  background-color: #f9f9f9; 
+}
+
+.sider {
+  background-color: #ffffff !important; 
+  border-right: 1px solid #e5e5e5; 
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.siderHeader {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.logoText {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* Nút thu gọn */
+.collapseBtn {
+  background-color: #f3f3f3;
+  color: #666;
+  border: none;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.collapseBtn:hover {
+  background-color: #e5e5e5;
+  color: #111;
+}
+
+/* Custom Menu Antd */
+.sider :global(.ant-menu-light) {
+  background-color: transparent !important;
+  border-right: none !important;
+  margin-top: 12px; 
+}
+
+.sider :global(.ant-menu-item) {
+  border-radius: 8px;
+  margin: 4px 12px; 
+  width: calc(100% - 24px); 
+  color: #333;
+  height: 48px !important; 
+  line-height: 48px !important; 
+  font-size: 15px !important; 
+  font-weight: 500; 
+}
+
+.sider :global(.ant-menu-item .anticon) {
+  font-size: 18px !important;
+  margin-right: 12px !important; 
+}
+
+.sider :global(.ant-menu-item-selected) {
+  background-color: #e6f4ff !important; 
+  color: #1677ff !important; 
+  font-weight: 600 !important;
+}
+
+/* HEADER */
+.header {
+  background: #ffffff;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  height: 64px;
+  border-bottom: 1px solid #f0f0f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03); 
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: #333;
+}
+
+.content {
+  background: transparent; 
+  padding: 24px;
+  overflow-y: auto; 
+  height: calc(100vh - 64px); /* Trừ đi 64px của Header */
+}
+
+.innerContent {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  min-height: 100%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.sider:global(.ant-layout-sider-collapsed) :global(.ant-menu-item) {
+  padding-left: 24px !important; 
+  margin: 4px 8px;
+  width: calc(100% - 16px);
+}
+
+.sider:global(.ant-layout-sider-collapsed) :global(.ant-menu-item .anticon) {
+  margin-right: 0 !important; 
+  font-size: 20px !important; 
+}

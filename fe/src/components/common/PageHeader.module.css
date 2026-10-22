@@ -1,0 +1,28 @@
+.headerContainer {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  width: 100%; 
+  flex-wrap: wrap; 
+  gap: 16px; 
+
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+}
+
+.rightSection {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; 
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: #111;
+  white-space: nowrap; /* Không cho tiêu đề bị rớt dòng */
+}

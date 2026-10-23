@@ -1,0 +1,43 @@
+/* Tùy chỉnh khung chứa toàn trang */
+.pageContainer {
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+/* Làm đẹp thanh công cụ (Nút thêm, ô tìm kiếm) */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  background-color: #fff;
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Làm đẹp bảng dữ liệu */
+.tableContainer {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Custom Header của bảng (Màu xám nhạt, chữ đậm) */
+.tableContainer :global(.ant-table-thead > tr > th) {
+  background-color: #f8f9fa !important;
+  color: #333;
+  font-weight: 600;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+/* Hiệu ứng hover vào các dòng trong bảng */
+.tableContainer :global(.ant-table-tbody > tr:hover > td) {
+  background-color: #f0f7ff !important; /* Xanh nhạt khi hover */
+}
+
+/* Hiệu ứng xuất hiện mượt mà */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

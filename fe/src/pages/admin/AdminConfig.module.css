@@ -1,0 +1,62 @@
+.pageContainer {
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+.cardContainer {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); 
+  min-height: 75vh;
+  border: 1px solid #f0f0f0; 
+}
+
+/* Custom lại thanh Tabs */
+.cardContainer :global(.ant-tabs-nav) {
+  margin-bottom: 32px; 
+}
+
+.cardContainer :global(.ant-tabs-tab) {
+  font-size: 16px; 
+  padding: 12px 0;
+}
+
+/* Làm đẹp các ô nhập liệu */
+.formContainer :global(.ant-input),
+.formContainer :global(.ant-input-number),
+.formContainer :global(.ant-picker) {
+  border-radius: 8px; 
+}
+
+/* Nút Lưu */
+.btnSave {
+  border-radius: 8px;
+  padding: 0 32px;
+  font-weight: 600;
+  height: 44px;
+  box-shadow: 0 4px 10px rgba(22, 119, 255, 0.3); 
+  margin-top: 16px;
+}
+
+/* --- BỔ SUNG CHO BẢNG TIÊU CHÍ (TAB 2) --- */
+
+/* Làm đẹp phần Header của Bảng */
+.tableContainer :global(.ant-table-thead > tr > th) {
+  background-color: #f8f9fa !important; 
+  color: #333;
+  font-weight: 600;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+/* Hiệu ứng hover vào dòng trong bảng */
+.tableContainer :global(.ant-table-tbody > tr:hover > td) {
+  background-color: #f0f7ff !important; 
+}
+
+/* Tùy chỉnh khoảng cách trong Modal */
+.modalForm {
+  margin-top: 20px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

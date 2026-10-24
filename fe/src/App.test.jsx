@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 import App from "./App.jsx";
 
 describe("App", () => {
-  it("shows the frontend starter page and API documentation link", () => {
+  it("shows the login page for unauthenticated users", () => {
     render(<App />);
 
     expect(
-      screen.getByRole("heading", { name: "Đánh giá KPI" }),
+      screen.getByRole("heading", { name: "Đăng Nhập Hệ Thống" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Mở tài liệu API (Swagger)" }),
-    ).toHaveAttribute("href", "http://localhost:3000/api/docs");
+      screen.getByRole("button", { name: "Đăng nhập" }),
+    ).toBeInTheDocument();
   });
 });

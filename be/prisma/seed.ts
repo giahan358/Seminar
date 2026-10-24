@@ -243,7 +243,6 @@ async function main(): Promise<void> {
         const leafCriteria = criteria.filter((criterion) => criterion.parentId !== null);
         for (const [criterionIndex, criterion] of leafCriteria.entries()) {
           const scoreId = uuid(4000 + (periodSeed.year - 2025) * 1000 + index * 20 + criterionIndex);
-          const selfScore = status === "DRAFT" ? null : Math.round(Number(criterion.maxScore) * (0.55 + (index % 4) * 0.1) * 100) / 100;
           const seededSelfScore = Math.round(Number(criterion.maxScore) * (0.55 + (index % 4) * 0.1) * 100) / 100;
           const score = await tx.criterionScore.upsert({
             where: { evaluationId_criterionId: { evaluationId: evaluation.id, criterionId: criterion.id } },

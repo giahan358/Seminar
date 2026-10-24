@@ -1,12 +1,10 @@
 import {
   Body,
   Controller,
-  Get,
   HttpCode,
   HttpStatus,
   Inject,
   Post,
-  UseGuards,
 } from "@nestjs/common";
 import { ApiProperty, ApiBody, ApiTags } from "@nestjs/swagger";
 import { AuthService } from "./auth.service.js";
@@ -37,7 +35,6 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiBody({ type: LoginDto })
   login(@Body() body: LoginDto) {
-    console.log("Body nhận được:", body); 
     return this.authService.login(body);
   }
 

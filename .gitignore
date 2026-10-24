@@ -33,3 +33,5 @@ be/prisma/migrations/dev.db
 be/prisma/migrations/dev.db-journal
 be/.seed-credentials.json
 be/src/generated/prisma/
+
+PROJECT_CONTEXT.md

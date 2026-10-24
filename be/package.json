@@ -17,7 +17,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "test": "npm run test:unit",
     "test:e2e": "node --test test/e2e.test.js",
-    "test:unit": "tsx --test src/modules/auth/auth.service.spec.ts src/common/guards/jwt-auth.guard.spec.js"
+    "test:unit": "tsx --test src/modules/auth/auth.service.spec.js src/common/guards/jwt-auth.guard.spec.js"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",

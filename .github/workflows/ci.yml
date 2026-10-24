@@ -66,11 +66,17 @@ jobs:
       - name: Build backend
         run: npm run build
 
-      - name: Start backend
-        run: npm start > backend.log 2>&1 &
-
-      - name: Wait for backend
-        run: curl --fail --retry 10 --retry-delay 3 http://127.0.0.1:3000/api/docs-json
+      - name: Start and wait for backend
+        run: |
+          npm start > backend.log 2>&1 &
+          for attempt in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:3000/api/docs-json > /dev/null; then
+              exit 0
+            fi
+            sleep 3
+          done
+          cat backend.log
+          exit 1
 
       - name: Run backend E2E tests
         run: npm run test:e2e

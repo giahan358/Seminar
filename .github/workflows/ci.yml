@@ -36,6 +36,7 @@ jobs:
         working-directory: ./be
     env:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      JWT_SECRET: ci-only-jwt-secret-with-at-least-32-characters
       WEB_ORIGINS: http://127.0.0.1:5173
     steps:
       - name: Checkout repository

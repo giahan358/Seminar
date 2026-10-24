@@ -19,6 +19,12 @@ if (typeof Set.prototype.intersection !== "function") {
   };
 }
 
+if (typeof Set.prototype.difference !== "function") {
+  Set.prototype.difference = function difference(other) {
+    return new Set([...this].filter((value) => !other.has(value)));
+  };
+}
+
 if (typeof window !== "undefined") {
   Object.defineProperty(window, "matchMedia", {
     writable: true,

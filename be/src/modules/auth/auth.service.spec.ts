@@ -1,9 +1,12 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- Cho phép bỏ qua kiểu của mock xác thực trong tệp kiểm thử
+// @ts-nocheck -- Các mock của bài kiểm thử chỉ triển khai phần hợp đồng đang được kiểm tra
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
 import bcrypt from "bcryptjs";
 import { AuthService } from "./auth.service.ts";
 
+/** Tạo dịch vụ xác thực cùng các mock có thể tùy chỉnh cho từng trường hợp */
 async function makeService(overrides = {}) {
   const passwordHash = await bcrypt.hash("correct-password", 4);
   const user = {
@@ -51,7 +54,8 @@ async function makeService(overrides = {}) {
   };
 }
 
-test("login returns safe user data and stores only a hash of the refresh token", async () => {
+/** Xác nhận đăng nhập chỉ trả dữ liệu an toàn và chỉ lưu mã băm refresh token */
+test("đăng nhập trả dữ liệu người dùng an toàn và chỉ lưu mã băm refresh token", async () => {
   const { service, user, createdRefreshTokens, updatedUsers } =
     await makeService();
 
@@ -74,7 +78,8 @@ test("login returns safe user data and stores only a hash of the refresh token",
   assert.equal(updatedUsers.length, 1);
 });
 
-test("login rejects invalid credentials without creating a session", async () => {
+/** Xác nhận thông tin đăng nhập sai không tạo phiên đăng nhập */
+test("đăng nhập từ chối thông tin sai và không tạo phiên", async () => {
   const { service, createdRefreshTokens } = await makeService();
 
   await assert.rejects(
@@ -85,7 +90,8 @@ test("login rejects invalid credentials without creating a session", async () =>
   assert.equal(createdRefreshTokens.length, 0);
 });
 
-test("login rejects missing fields before querying users", async () => {
+/** Xác nhận dữ liệu thiếu bị từ chối trước khi truy vấn người dùng */
+test("đăng nhập từ chối trường bắt buộc còn thiếu trước khi truy vấn", async () => {
   let lookupCount = 0;
   const { service } = await makeService({
     prisma: {
@@ -106,7 +112,8 @@ test("login rejects missing fields before querying users", async () => {
   assert.equal(lookupCount, 0);
 });
 
-test("login rejects inactive accounts", async () => {
+/** Xác nhận tài khoản không hoạt động không thể đăng nhập */
+test("đăng nhập từ chối tài khoản đã bị vô hiệu hóa", async () => {
   const { service } = await makeService({
     prisma: {
       user: {

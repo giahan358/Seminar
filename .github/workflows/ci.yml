@@ -73,14 +73,32 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Check TypeScript types
+        run: npx tsc --noEmit
+
       - name: Apply database migrations
         run: npx prisma migrate deploy
+
+      - name: Verify seed on an empty database
+        env:
+          SEED_ADMIN_PASSWORD: ci-only-seed-password
+          SEED_CREDENTIALS_FILE: /tmp/seed-credentials.json
+        run: |
+          PGPASSWORD=ci createdb -h localhost -U ci ci_seed
+          DATABASE_URL=postgresql://ci:ci@localhost:5432/ci_seed npx prisma migrate deploy
+          DATABASE_URL=postgresql://ci:ci@localhost:5432/ci_seed npx prisma db seed
 
       - name: Lint backend
         run: npm run lint
 
       - name: Run backend unit tests
         run: npm run test:unit
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical
 
       - name: Build backend
         run: npm run build

@@ -35,6 +35,8 @@ model User {
   unitId                String?             @unique(map: "users_unit_id_idx", where: raw("(unit_id IS NOT NULL)")) @map("unit_id") @db.Uuid
   isActive              Boolean             @default(true) @map("is_active")
   lastLoginAt           DateTime?           @map("last_login_at") @db.Timestamp(6)
+  credentialsSentAt     DateTime?           @map("credentials_sent_at") @db.Timestamp(6)
+  passwordChangedAt     DateTime?           @map("password_changed_at") @db.Timestamp(6)
   createdAt             DateTime            @map("created_at") @db.Timestamp(6)
   updatedAt             DateTime            @map("updated_at") @db.Timestamp(6)
   unit                  Unit?               @relation(fields: [unitId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -49,6 +51,9 @@ model User {
   webPushSubscriptions  WebPushSubscription[]
   auditLogs             AuditLog[]
   reportExports         ReportExport[]
+  notificationPreferences NotificationPreference[]
+  telegramBinding       TelegramBinding?
+  telegramLinkTokens    TelegramLinkToken[]
 
   @@map("users")
 }
@@ -62,6 +67,7 @@ model RefreshToken {
   createdAt DateTime @map("created_at") @db.Timestamp(6)
   user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([userId, revokedAt])
   @@map("refresh_tokens")
 }
 
@@ -155,6 +161,7 @@ model Evaluation {
 
   @@unique([periodId, unitId], map: "evaluations_period_id_unit_id_idx")
   @@index([periodId, status])
+  @@index([status, supplementDeadline])
   @@map("evaluations")
 }
 
@@ -178,6 +185,7 @@ model CriterionScore {
   evidences       Evidence[]
 
   @@unique([evaluationId, criterionId], map: "criterion_scores_evaluation_id_criterion_id_idx")
+  @@index([criterionId])
   @@map("criterion_scores")
 }
 
@@ -244,10 +252,14 @@ model Notification {
   isRead      Boolean   @default(false) @map("is_read")
   scheduledAt DateTime? @map("scheduled_at") @db.Timestamp(6)
   sentAt      DateTime? @map("sent_at") @db.Timestamp(6)
+  dedupeKey   String?   @map("dedupe_key") @db.VarChar
   createdAt   DateTime  @map("created_at") @db.Timestamp(6)
   user        User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deliveries  NotificationDelivery[]
 
+  @@unique([userId, dedupeKey])
   @@index([userId, isRead])
+  @@index([userId, createdAt])
   @@map("notifications")
 }
 
@@ -282,6 +294,8 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
   @@map("audit_logs")
 }
 
@@ -292,13 +306,71 @@ model ReportExport {
   reportType   String           @map("report_type") @db.VarChar
   format       String           @db.VarChar
   storagePath  String           @map("storage_path") @db.VarChar
+  fileName     String?          @map("file_name") @db.VarChar
+  sizeBytes    BigInt?          @map("size_bytes")
   createdById  String           @map("created_by_id") @db.Uuid
   createdAt    DateTime         @map("created_at") @db.Timestamp(6)
   period       EvaluationPeriod @relation(fields: [periodId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   evaluation   Evaluation?      @relation(fields: [evaluationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   createdBy    User             @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([periodId, createdAt])
   @@map("report_exports")
+}
+
+model NotificationDelivery {
+  id                String       @id @db.Uuid
+  notificationId    String       @map("notification_id") @db.Uuid
+  channel           String       @db.VarChar
+  status            String       @default("PENDING") @db.VarChar
+  attemptCount      Int          @default(0) @map("attempt_count")
+  nextAttemptAt     DateTime?    @map("next_attempt_at") @db.Timestamp(6)
+  lastError         String?      @map("last_error") @db.VarChar
+  providerMessageId String?      @map("provider_message_id") @db.VarChar
+  sentAt            DateTime?    @map("sent_at") @db.Timestamp(6)
+  createdAt         DateTime     @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime     @map("updated_at") @db.Timestamp(6)
+  notification      Notification @relation(fields: [notificationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([notificationId, channel])
+  @@index([status, nextAttemptAt])
+  @@map("notification_deliveries")
+}
+
+model NotificationPreference {
+  userId    String   @map("user_id") @db.Uuid
+  channel   String   @db.VarChar
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @map("updated_at") @db.Timestamp(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([userId, channel])
+  @@map("notification_preferences")
+}
+
+model TelegramBinding {
+  id               String    @id @db.Uuid
+  userId           String    @unique @map("user_id") @db.Uuid
+  chatId           String    @unique @map("chat_id") @db.VarChar
+  telegramUsername String?   @map("telegram_username") @db.VarChar
+  linkedAt         DateTime  @map("linked_at") @db.Timestamp(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamp(6)
+  user             User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("telegram_bindings")
+}
+
+model TelegramLinkToken {
+  id        String    @id @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar
+  expiresAt DateTime  @map("expires_at") @db.Timestamp(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamp(6)
+  createdAt DateTime  @map("created_at") @db.Timestamp(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId])
+  @@map("telegram_link_tokens")
 }
 
 view EvaluationTotals {

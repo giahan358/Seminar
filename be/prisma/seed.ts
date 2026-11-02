@@ -284,11 +284,8 @@ async function main(): Promise<void> {
         });
 
         for (const [historyIndex, toStatus] of statusChain(status).entries()) {
-          await tx.statusHistory.upsert({
-            where: { id: uuid(8000 + (periodSeed.year - 2025) * 1000 + index * 10 + historyIndex) },
-            update: { toStatus: databaseStatus(toStatus), createdAt: new Date(periodSeed.year, 1, 5 + historyIndex + index) },
-            create: { id: uuid(8000 + (periodSeed.year - 2025) * 1000 + index * 10 + historyIndex), evaluationId: evaluation.id, actorId: historyIndex === 0 ? unitUser.userId : admin.id, fromStatus: historyIndex === 0 ? null : databaseStatus(statusChain(status)[historyIndex - 1]), toStatus: databaseStatus(toStatus), comment: `Chuyển trạng thái mẫu sang ${toStatus}.`, createdAt: new Date(periodSeed.year, 1, 5 + historyIndex + index) },
-          });
+          // status_histories là bảng chỉ-thêm (trigger chặn UPDATE/DELETE): chạy lại seed thì bỏ qua dòng đã có
+          await tx.statusHistory.createMany({ data: [{ id: uuid(8000 + (periodSeed.year - 2025) * 1000 + index * 10 + historyIndex), evaluationId: evaluation.id, actorId: historyIndex === 0 ? unitUser.userId : admin.id, fromStatus: historyIndex === 0 ? null : databaseStatus(statusChain(status)[historyIndex - 1]), toStatus: databaseStatus(toStatus), comment: `Chuyển trạng thái mẫu sang ${toStatus}.`, createdAt: new Date(periodSeed.year, 1, 5 + historyIndex + index) }], skipDuplicates: true });
         }
 
         if (status === "IN_REVIEW" || status === "NEEDS_SUPPLEMENT" || status === "FINALIZED") {
@@ -305,11 +302,8 @@ async function main(): Promise<void> {
           create: { id: uuid(10000 + (periodSeed.year - 2025) * 100 + index), userId: unitUser.userId, channel: index % 2 === 0 ? "SYSTEM" : "WEB_PUSH", type: "EVALUATION_STATUS_CHANGED", title: `Cập nhật hồ sơ ${periodSeed.year}`, body: `Hồ sơ của ${unitUser.username} đang ở trạng thái ${status}.`, refType: "EVALUATION", refId: evaluation.id, isRead: index % 3 === 0, scheduledAt: null, sentAt: index % 3 === 0 ? now : null, createdAt: now },
         });
 
-        await tx.auditLog.upsert({
-          where: { id: uuid(12000 + (periodSeed.year - 2025) * 100 + index) },
-          update: { action: "SEED_EVALUATION", entity: "Evaluation", entityId: evaluation.id, after: { status, periodYear: periodSeed.year } },
-          create: { id: uuid(12000 + (periodSeed.year - 2025) * 100 + index), actorId: status === "DRAFT" ? unitUser.userId : admin.id, action: "SEED_EVALUATION", entity: "Evaluation", entityId: evaluation.id, after: { status, periodYear: periodSeed.year }, ip: "127.0.0.1", createdAt: now },
-        });
+        // audit_logs là bảng chỉ-thêm (trigger chặn UPDATE/DELETE): chạy lại seed thì bỏ qua dòng đã có
+        await tx.auditLog.createMany({ data: [{ id: uuid(12000 + (periodSeed.year - 2025) * 100 + index), actorId: status === "DRAFT" ? unitUser.userId : admin.id, action: "SEED_EVALUATION", entity: "Evaluation", entityId: evaluation.id, after: { status, periodYear: periodSeed.year }, ip: "127.0.0.1", createdAt: now }], skipDuplicates: true });
 
         if (index < 3) {
           await tx.reportExport.upsert({

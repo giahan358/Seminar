@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import type { CreateCriterionDto } from "./dto/create-criterion.dto.js";
 import type { UpdateCriterionDto } from "./dto/update-criterion.dto.js";
+import { ERROR_CODES } from "../../common/constants/error-codes.js";
 
 @Injectable()
 export class CriteriaService {
@@ -41,7 +42,7 @@ export class CriteriaService {
       include: { parent: true, children: { orderBy: { sortOrder: "asc" } } },
     });
     if (!criterion) {
-      throw new NotFoundException(`Criterion ${id} was not found`);
+      throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: "Không tìm thấy tiêu chí" });
     }
     return criterion;
   }
@@ -86,12 +87,10 @@ export class CriteriaService {
       },
     });
     if (!criterion) {
-      throw new NotFoundException(`Criterion ${id} was not found`);
+      throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: "Không tìm thấy tiêu chí" });
     }
     if (criterion._count.children > 0 || criterion._count.scores > 0) {
-      throw new BadRequestException(
-        "Cannot delete a criterion that has child criteria or criterion scores",
-      );
+      throw new BadRequestException({ code: ERROR_CODES.BUSINESS_RULE_VIOLATION, message: "Không thể xóa tiêu chí đang có tiêu chí con hoặc kết quả đánh giá" });
     }
     return this.prisma.criterion.delete({ where: { id } });
   }

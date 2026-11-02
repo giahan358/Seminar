@@ -4,6 +4,7 @@ import { Prisma } from "../../generated/prisma/client.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import type { CreateAuditLogDto } from "./dto/create-audit-log.dto.js";
 import type { QueryAuditLogDto } from "./dto/query-audit-log.dto.js";
+import { ERROR_CODES } from "../../common/constants/error-codes.js";
 
 @Injectable()
 export class AuditLogsService {
@@ -40,7 +41,7 @@ export class AuditLogsService {
       },
     });
     if (!auditLog) {
-      throw new NotFoundException(`Audit log ${id} was not found`);
+      throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: "Không tìm thấy nhật ký hoạt động" });
     }
     return auditLog;
   }

@@ -3,9 +3,23 @@ import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module.js";
 import { ConfigService } from "@nestjs/config";
+import { BadRequestException, ValidationPipe } from "@nestjs/common";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter.js";
+import { ERROR_CODES } from "./common/constants/error-codes.js";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalPipes(new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    exceptionFactory: (errors) => new BadRequestException({
+      code: ERROR_CODES.VALIDATION_ERROR,
+      message: errors.flatMap((error) => Object.values(error.constraints ?? {}).map(
+        (message) => `${error.property}: ${message}`,
+      )),
+    }),
+  }));
   const config = app.get(ConfigService);
   const allowedOrigins = config.getOrThrow<string>("WEB_ORIGINS")
     .split(",")

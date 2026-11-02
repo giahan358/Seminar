@@ -29,7 +29,7 @@ export class EvaluationPeriodsService {
       },
     });
     if (!period) {
-      throw new NotFoundException(`Evaluation period ${id} was not found`);
+      throw new NotFoundException(`Không tìm thấy đợt đánh giá ${id}`);
     }
     return period;
   }
@@ -98,16 +98,16 @@ export class EvaluationPeriodsService {
       },
     });
     if (!period) {
-      throw new NotFoundException(`Evaluation period ${id} was not found`);
+      throw new NotFoundException(`Không tìm thấy đợt đánh giá ${id}`);
     }
     if (period._count.evaluations > 0) {
       throw new BadRequestException(
-        "Cannot delete an evaluation period that has evaluations",
+        "Không thể xóa đợt đánh giá đã có kết quả đánh giá",
       );
     }
     if (period._count.reportExports > 0) {
       throw new BadRequestException(
-        "Cannot delete an evaluation period that has report exports",
+        "Không thể xóa đợt đánh giá đã có báo cáo được xuất",
       );
     }
     return this.prisma.$transaction(async (transaction) => {

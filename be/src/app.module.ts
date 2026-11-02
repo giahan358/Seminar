@@ -18,8 +18,10 @@ import { envValidationSchema } from "./config/env.validation.js";
       ],
       validationSchema: envValidationSchema,
       validationOptions: {
-        allowUnknown: true, // Bỏ qua biến môi trường ngoài schema
-        abortEarly: false, // Hiển thị toàn bộ lỗi cùng lúc
+        libraryOptions: {
+          allowUnknown: true,
+          abortEarly: false,
+        },
       },
     }),
     PrismaModule,

@@ -1,4 +1,4 @@
-import * as Joi from 'joi';
+import Joi from "joi";
 
 export const envValidationSchema = Joi.object({
   // Cấu hình ứng dụng
@@ -10,7 +10,7 @@ export const envValidationSchema = Joi.object({
   JWT_SECRET: Joi.string().min(32).required(),
 
   // Lưu trữ Supabase
-  SUPABASE_URL: Joi.string().uri().required(),
+  SUPABASE_URL: Joi.string().uri().allow("").optional(),
   SUPABASE_KEY: Joi.string().required(),
 
   // Thông báo đẩy
@@ -19,5 +19,5 @@ export const envValidationSchema = Joi.object({
   WEB_PUSH_SUBJECT: Joi.string().required(),
 
   // Dữ liệu khởi tạo
-  SEED_CREDENTIALS_FILE: Joi.string().default('.seed-credentials.json'),
+  SEED_CREDENTIALS_FILE: Joi.string().default(".seed-credentials.json"),
 });

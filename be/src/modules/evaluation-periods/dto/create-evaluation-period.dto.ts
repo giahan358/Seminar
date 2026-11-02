@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+﻿import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateEvaluationPeriodDto {
   @ApiProperty({ example: 2026 })

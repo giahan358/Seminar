@@ -25,7 +25,7 @@ import { UpdateEvaluationPeriodDto } from "./dto/update-evaluation-period.dto.js
 import { UpsertRatingThresholdDto } from "./dto/upsert-rating-threshold.dto.js";
 import { EvaluationPeriodsService } from "./evaluation-periods.service.js";
 
-@ApiTags("Evaluation Periods")
+@ApiTags("Đợt đánh giá")
 @ApiBearerAuth()
 @Controller("api/v1/evaluation-periods")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -34,34 +34,34 @@ export class EvaluationPeriodsController {
 
   @Get()
   @Roles("ADMIN", "UNIT")
-  @ApiOperation({ summary: "List evaluation periods" })
-  @ApiResponse({ status: 200, description: "Evaluation periods with rating thresholds" })
+  @ApiOperation({ summary: "Danh sách đợt đánh giá" })
+  @ApiResponse({ status: 200, description: "Danh sách đợt đánh giá kèm ngưỡng xếp loại" })
   findAll() {
     return this.evaluationPeriodsService.findAll();
   }
 
   @Get(":id")
   @Roles("ADMIN", "UNIT")
-  @ApiOperation({ summary: "Get an evaluation period" })
-  @ApiResponse({ status: 200, description: "Evaluation period details" })
-  @ApiResponse({ status: 404, description: "Evaluation period not found" })
+  @ApiOperation({ summary: "Xem chi tiết đợt đánh giá" })
+  @ApiResponse({ status: 200, description: "Thông tin chi tiết đợt đánh giá" })
+  @ApiResponse({ status: 404, description: "Không tìm thấy đợt đánh giá" })
   findOne(@Param("id", ParseUUIDPipe) id: string) {
     return this.evaluationPeriodsService.findOne(id);
   }
 
   @Post()
   @Roles("ADMIN")
-  @ApiOperation({ summary: "Create an evaluation period" })
-  @ApiResponse({ status: 201, description: "Evaluation period created" })
+  @ApiOperation({ summary: "Tạo đợt đánh giá" })
+  @ApiResponse({ status: 201, description: "Tạo đợt đánh giá thành công" })
   create(@GetCurrentUser() user: CurrentUser, @Body() dto: CreateEvaluationPeriodDto) {
     return this.evaluationPeriodsService.create(user.id, dto);
   }
 
   @Patch(":id")
   @Roles("ADMIN")
-  @ApiOperation({ summary: "Update an evaluation period" })
-  @ApiResponse({ status: 200, description: "Evaluation period updated" })
-  @ApiResponse({ status: 404, description: "Evaluation period not found" })
+  @ApiOperation({ summary: "Cập nhật đợt đánh giá" })
+  @ApiResponse({ status: 200, description: "Cập nhật đợt đánh giá thành công" })
+  @ApiResponse({ status: 404, description: "Không tìm thấy đợt đánh giá" })
   update(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateEvaluationPeriodDto,
@@ -71,18 +71,18 @@ export class EvaluationPeriodsController {
 
   @Delete(":id")
   @Roles("ADMIN")
-  @ApiOperation({ summary: "Delete an evaluation period" })
-  @ApiResponse({ status: 200, description: "Evaluation period deleted" })
-  @ApiResponse({ status: 400, description: "Period already has evaluations" })
-  @ApiResponse({ status: 404, description: "Evaluation period not found" })
+  @ApiOperation({ summary: "Xóa đợt đánh giá" })
+  @ApiResponse({ status: 200, description: "Xóa đợt đánh giá thành công" })
+  @ApiResponse({ status: 400, description: "Đợt đánh giá đã có dữ liệu, không thể xóa" })
+  @ApiResponse({ status: 404, description: "Không tìm thấy đợt đánh giá" })
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.evaluationPeriodsService.remove(id);
   }
 
   @Put(":id/thresholds")
   @Roles("ADMIN")
-  @ApiOperation({ summary: "Create or update rating thresholds" })
-  @ApiResponse({ status: 200, description: "Rating thresholds upserted" })
+  @ApiOperation({ summary: "Tạo hoặc cập nhật ngưỡng xếp loại" })
+  @ApiResponse({ status: 200, description: "Cập nhật ngưỡng xếp loại thành công" })
   upsertThresholds(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() thresholds: UpsertRatingThresholdDto[],

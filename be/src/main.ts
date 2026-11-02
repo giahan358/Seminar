@@ -2,10 +2,12 @@ import "dotenv/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module.js";
+import { ConfigService } from "@nestjs/config";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  const allowedOrigins = (process.env.WEB_ORIGINS ?? "http://localhost:5173")
+  const config = app.get(ConfigService);
+  const allowedOrigins = config.getOrThrow<string>("WEB_ORIGINS")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -35,7 +37,7 @@ async function bootstrap(): Promise<void> {
   });
 
   app.enableShutdownHooks();
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(config.get<number>("PORT", 3000));
 }
 
 bootstrap().catch((error: unknown) => {

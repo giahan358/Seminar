@@ -9,6 +9,7 @@ import { PrismaModule } from "./prisma/prisma.module.js";
 import { envValidationSchema } from "./config/env.validation.js";
 import { HealthController } from "./health/health.controller.js";
 import { HttpLoggingMiddleware } from "./common/middleware/http-logging.middleware.js";
+import { CommonModule } from "./common/common.module.js";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { HttpLoggingMiddleware } from "./common/middleware/http-logging.middlewa
       },
     }),
     PrismaModule,
+    CommonModule,
     AuthModule,
     EvaluationPeriodsModule,
     CriteriaModule,

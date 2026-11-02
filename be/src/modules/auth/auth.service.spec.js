@@ -80,7 +80,7 @@ test("login rejects invalid credentials without creating a session", async () =>
   await assert.rejects(
     service.login({ username: "admin", password: "wrong-password" }),
     (error) => error.getStatus() === 401 &&
-      error.getResponse().code === "INVALID_CREDENTIALS",
+      error.getResponse().code === "UNAUTHORIZED",
   );
   assert.equal(createdRefreshTokens.length, 0);
 });
@@ -128,6 +128,6 @@ test("login rejects inactive accounts", async () => {
   await assert.rejects(
     service.login({ username: "admin", password: "correct-password" }),
     (error) => error.getStatus() === 401 &&
-      error.getResponse().code === "INVALID_CREDENTIALS",
+      error.getResponse().code === "UNAUTHORIZED",
   );
 });

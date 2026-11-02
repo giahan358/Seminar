@@ -8,6 +8,7 @@ import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { PrismaService } from "../../prisma/prisma.service.js";
+import { ERROR_CODES } from "../../common/constants/error-codes.js";
 
 const ACCESS_TOKEN_EXPIRES_IN_SECONDS = 900;
 const REFRESH_TOKEN_EXPIRES_IN_MS = 30 * 24 * 60 * 60 * 1000;
@@ -24,18 +25,17 @@ interface LoginRequest {
 function invalidCredentials(): UnauthorizedException {
   return new UnauthorizedException({
     statusCode: 401,
-    code: "INVALID_CREDENTIALS",
+    code: ERROR_CODES.UNAUTHORIZED,
     message: "Tên đăng nhập hoặc mật khẩu không chính xác.",
-    details: [],
   });
 }
 
 function invalidLoginRequest(field: string): BadRequestException {
   return new BadRequestException({
     statusCode: 400,
-    code: "VALIDATION_ERROR",
+    code: ERROR_CODES.VALIDATION_ERROR,
     message: "Dữ liệu gửi lên không hợp lệ.",
-    details: [{ field, message: "Trường này là bắt buộc." }],
+    details: [{ field, messages: ["Trường này không được để trống"] }],
   });
 }
 

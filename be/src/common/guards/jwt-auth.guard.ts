@@ -11,6 +11,7 @@ import { Reflector } from "@nestjs/core";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import type { CurrentUser, UserRole } from "../decorators/current-user.js";
 import { AUTHORIZED_ROLES } from "../decorators/roles.decorator.js";
+import { ERROR_CODES } from "../constants/error-codes.js";
 
 interface AuthenticatedRequest {
   headers: {
@@ -27,9 +28,9 @@ interface AccessTokenPayload {
 function unauthorized(): UnauthorizedException {
   return new UnauthorizedException({
     statusCode: 401,
-    code: "UNAUTHORIZED",
+    code: ERROR_CODES.UNAUTHORIZED,
     message: "Đăng nhập hoặc access token hợp lệ là bắt buộc.",
-    details: [],
+
   });
 }
 
@@ -116,9 +117,9 @@ export class RolesGuard implements CanActivate {
 
     throw new ForbiddenException({
       statusCode: 403,
-      code: "FORBIDDEN",
+      code: ERROR_CODES.FORBIDDEN,
       message: "Bạn không có quyền thực hiện thao tác này.",
-      details: [],
+
     });
   }
 }

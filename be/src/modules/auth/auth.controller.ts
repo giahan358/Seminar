@@ -6,25 +6,9 @@ import {
   Inject,
   Post,
 } from "@nestjs/common";
-import { ApiProperty, ApiBody, ApiTags } from "@nestjs/swagger";
+import { ApiBody, ApiTags } from "@nestjs/swagger";
 import { AuthService } from "./auth.service.js";
-
-
-export class LoginDto {
-  @ApiProperty({ 
-    example: 'admin', 
-    description: 'Tên đăng nhập', 
-    type: String 
-  })
-  username?: string;
-
-  @ApiProperty({ 
-    example: '123456', 
-    description: 'Mật khẩu', 
-    type: String 
-  })
-  password?: string;
-}
+import { LoginDto } from "./dto/login.dto.js";
 
 @ApiTags('Auth') 
 @Controller("api/v1/auth")

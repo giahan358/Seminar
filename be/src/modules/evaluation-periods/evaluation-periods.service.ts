@@ -8,6 +8,7 @@ import { PrismaService } from "../../prisma/prisma.service.js";
 import type { CreateEvaluationPeriodDto } from "./dto/create-evaluation-period.dto.js";
 import type { UpdateEvaluationPeriodDto } from "./dto/update-evaluation-period.dto.js";
 import type { UpsertRatingThresholdDto } from "./dto/upsert-rating-threshold.dto.js";
+import { ERROR_CODES } from "../../common/constants/error-codes.js";
 
 @Injectable()
 export class EvaluationPeriodsService {
@@ -29,7 +30,7 @@ export class EvaluationPeriodsService {
       },
     });
     if (!period) {
-      throw new NotFoundException(`Không tìm thấy đợt đánh giá ${id}`);
+      throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: "Không tìm thấy đợt đánh giá" });
     }
     return period;
   }
@@ -98,17 +99,13 @@ export class EvaluationPeriodsService {
       },
     });
     if (!period) {
-      throw new NotFoundException(`Không tìm thấy đợt đánh giá ${id}`);
+      throw new NotFoundException({ code: ERROR_CODES.NOT_FOUND, message: "Không tìm thấy đợt đánh giá" });
     }
     if (period._count.evaluations > 0) {
-      throw new BadRequestException(
-        "Không thể xóa đợt đánh giá đã có kết quả đánh giá",
-      );
+      throw new BadRequestException({ code: ERROR_CODES.BUSINESS_RULE_VIOLATION, message: "Không thể xóa đợt đánh giá đã có kết quả đánh giá" });
     }
     if (period._count.reportExports > 0) {
-      throw new BadRequestException(
-        "Không thể xóa đợt đánh giá đã có báo cáo được xuất",
-      );
+      throw new BadRequestException({ code: ERROR_CODES.BUSINESS_RULE_VIOLATION, message: "Không thể xóa đợt đánh giá đã có báo cáo được xuất" });
     }
     return this.prisma.$transaction(async (transaction) => {
       await transaction.ratingThreshold.deleteMany({ where: { periodId: id } });

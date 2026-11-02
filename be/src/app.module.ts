@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import * as path from "node:path";
 import { AuthModule } from "./modules/auth/auth.module.js";
@@ -7,6 +7,8 @@ import { CriteriaModule } from './modules/criteria/criteria.module.js';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module.js';
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { envValidationSchema } from "./config/env.validation.js";
+import { HealthController } from "./health/health.controller.js";
+import { HttpLoggingMiddleware } from "./common/middleware/http-logging.middleware.js";
 
 @Module({
   imports: [
@@ -30,5 +32,11 @@ import { envValidationSchema } from "./config/env.validation.js";
     CriteriaModule,
     AuditLogsModule,
   ],
+  controllers: [HealthController],
+  providers: [HttpLoggingMiddleware],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(HttpLoggingMiddleware).forRoutes("*");
+  }
+}

@@ -14,7 +14,7 @@ export class UpdateEvaluationPeriodDto {
   @IsNotEmpty({ message: "Tên đợt đánh giá không được để trống" })
   name?: string;
 
-  @ApiPropertyOptional({ example: "SELF_EVALUATION" })
+  @ApiPropertyOptional({ example: "SELF_EVAL" })
   @IsOptional()
   @IsString({ message: "Giai đoạn đánh giá phải là chuỗi" })
   phase?: string;

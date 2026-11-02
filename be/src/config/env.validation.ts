@@ -3,7 +3,8 @@ import Joi from "joi";
 export const envValidationSchema = Joi.object({
   // Cấu hình ứng dụng
   PORT: Joi.number().port().default(3000),
-  WEB_ORIGINS: Joi.string().required(),
+  WEB_ORIGINS: Joi.string().optional(),
+  CORS_ORIGINS: Joi.string().optional(),
 
   // Cơ sở dữ liệu và xác thực
   DATABASE_URL: Joi.string().required(),
@@ -20,4 +21,4 @@ export const envValidationSchema = Joi.object({
 
   // Dữ liệu khởi tạo
   SEED_CREDENTIALS_FILE: Joi.string().default(".seed-credentials.json"),
-});
+}).or("WEB_ORIGINS", "CORS_ORIGINS");

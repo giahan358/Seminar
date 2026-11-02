@@ -14,6 +14,19 @@ permissions:
   contents: read
 
 jobs:
+  gitleaks:
+    name: Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (fetch full history for deep scan)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Bắt buộc fetch toàn bộ git history để quét toàn bộ commit
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   backend-ci:
     name: Backend CI
     runs-on: ubuntu-latest

@@ -9,16 +9,29 @@ import type { CreateEvaluationPeriodDto } from "./dto/create-evaluation-period.d
 import type { UpdateEvaluationPeriodDto } from "./dto/update-evaluation-period.dto.js";
 import type { UpsertRatingThresholdDto } from "./dto/upsert-rating-threshold.dto.js";
 import { ERROR_CODES } from "../../common/constants/error-codes.js";
+import type { PaginationQueryDto } from "../../common/dto/pagination-query.dto.js";
+import { buildPaginationOptions, createPaginatedResult } from "../../common/utils/pagination.util.js";
 
 @Injectable()
 export class EvaluationPeriodsService {
   constructor(private readonly prisma: PrismaService) { }
 
-  findAll() {
-    return this.prisma.evaluationPeriod.findMany({
-      include: { ratingThresholds: true },
-      orderBy: { createdAt: "desc" },
-    });
+  async findAll(query: PaginationQueryDto) {
+    const { skip, take, orderBy } = buildPaginationOptions(
+      query,
+      ["createdAt", "year", "name", "phase"],
+    );
+    // Lấy danh sách của trang và tổng số bản ghi cùng lúc để metadata khớp với kết quả
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.evaluationPeriod.findMany({
+        include: { ratingThresholds: true },
+        orderBy,
+        skip,
+        take,
+      }),
+      this.prisma.evaluationPeriod.count(),
+    ]);
+    return createPaginatedResult(items, total, query.page, query.pageSize);
   }
 
   async findOne(id: string) {

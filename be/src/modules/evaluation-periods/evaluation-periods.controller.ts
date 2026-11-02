@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Put,
   UseGuards,
 } from "@nestjs/common";
@@ -17,6 +18,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { GetCurrentUser } from "../../common/decorators/current-user.js";
+import { PaginationQueryDto } from "../../common/dto/pagination-query.dto.js";
 import type { CurrentUser } from "../../common/decorators/current-user.js";
 import { Roles } from "../../common/decorators/roles.decorator.js";
 import { JwtAuthGuard, RolesGuard } from "../../common/guards/jwt-auth.guard.js";
@@ -36,8 +38,8 @@ export class EvaluationPeriodsController {
   @Roles("ADMIN", "UNIT")
   @ApiOperation({ summary: "Danh sách đợt đánh giá" })
   @ApiResponse({ status: 200, description: "Danh sách đợt đánh giá kèm ngưỡng xếp loại" })
-  findAll() {
-    return this.evaluationPeriodsService.findAll();
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.evaluationPeriodsService.findAll(query);
   }
 
   @Get(":id")

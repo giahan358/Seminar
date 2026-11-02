@@ -2,7 +2,7 @@
 import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class UpsertRatingThresholdDto {
-  @ApiProperty({ example: "A" })
+  @ApiProperty({ example: "EXCELLENT" })
   @IsString({ message: "Mức xếp loại phải là chuỗi" })
   @IsNotEmpty({ message: "Mức xếp loại không được để trống" })
   rating!: string;

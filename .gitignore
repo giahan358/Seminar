@@ -33,5 +33,8 @@ be/prisma/migrations/dev.db
 be/prisma/migrations/dev.db-journal
 be/.seed-credentials.json
 be/src/generated/prisma/
-
+be/credentials*.json
+**/.seed-credentials*.json
+be/credentials*.json
+**/.seed-credentials*.json
 PROJECT_CONTEXT.md

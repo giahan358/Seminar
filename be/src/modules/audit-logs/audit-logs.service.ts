@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
 import { Prisma } from "../../generated/prisma/client.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import type { CreateAuditLogDto } from "./dto/create-audit-log.dto.js";
 import type { QueryAuditLogDto } from "./dto/query-audit-log.dto.js";
 import { ERROR_CODES } from "../../common/constants/error-codes.js";
+import { AuditService } from "../../common/services/audit.service.js";
 
 @Injectable()
 export class AuditLogsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
   async findAll(query: QueryAuditLogDto) {
     const page = Math.max(1, Number(query.page) || 1);
@@ -46,29 +46,7 @@ export class AuditLogsService {
     return auditLog;
   }
 
-  logAction(data: CreateAuditLogDto) {
-    return this.prisma.auditLog.create({
-      data: {
-        id: randomUUID(),
-        actorId: data.actorId ?? null,
-        action: data.action,
-        entity: data.entity,
-        entityId: data.entityId,
-        before:
-          data.before === undefined
-            ? Prisma.DbNull
-            : data.before === null
-              ? Prisma.JsonNull
-              : data.before,
-        after:
-          data.after === undefined
-            ? Prisma.DbNull
-            : data.after === null
-              ? Prisma.JsonNull
-              : data.after,
-        ip: data.ip ?? null,
-        createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
-      },
-    });
+  record(data: CreateAuditLogDto) {
+    return this.audit.record({ ...data, actorId: data.actorId ?? null });
   }
 }

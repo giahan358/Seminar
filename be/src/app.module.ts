@@ -10,6 +10,7 @@ import { envValidationSchema } from "./config/env.validation.js";
 import { HealthController } from "./health/health.controller.js";
 import { HttpLoggingMiddleware } from "./common/middleware/http-logging.middleware.js";
 import { CommonModule } from "./common/common.module.js";
+import { DashboardModule } from "./modules/dashboard/dashboard.module.js";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { CommonModule } from "./common/common.module.js";
     EvaluationPeriodsModule,
     CriteriaModule,
     AuditLogsModule,
+    DashboardModule,
   ],
   controllers: [HealthController],
   providers: [HttpLoggingMiddleware],

@@ -16,9 +16,9 @@
     "db:reset": "prisma migrate reset --force",
     "db:seed": "tsx prisma/seed.ts",
     "test": "npm run test:unit",
-    "test:e2e": "tsx --test --test-concurrency=1 \"test/e2e/*.e2e.test.ts\"",
-    "test:unit": "tsx --test --test-concurrency=1 \"src/**/*.spec.ts\"",
-    "test:cov": "tsx --test --test-concurrency=1 --experimental-test-coverage \"src/**/*.spec.ts\""
+    "test:e2e": "node scripts/run-tests.mjs test/e2e .e2e.test.ts",
+    "test:unit": "node scripts/run-tests.mjs src .spec.ts",
+    "test:cov": "node scripts/run-tests.mjs src .spec.ts --coverage"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",

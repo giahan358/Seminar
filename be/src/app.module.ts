@@ -2,6 +2,8 @@ import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import * as path from "node:path";
 import { AuthModule } from "./modules/auth/auth.module.js";
+import { UsersModule } from "./modules/users/users.module.js";
+import { UnitsModule } from "./modules/units/units.module.js";
 import { EvaluationPeriodsModule } from './modules/evaluation-periods/evaluation-periods.module.js';
 import { CriteriaModule } from './modules/criteria/criteria.module.js';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module.js';
@@ -30,6 +32,8 @@ import { CommonModule } from "./common/common.module.js";
     PrismaModule,
     CommonModule,
     AuthModule,
+    UsersModule,
+    UnitsModule,
     EvaluationPeriodsModule,
     CriteriaModule,
     AuditLogsModule,

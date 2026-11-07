@@ -1,24 +1,25 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- Cho phép bỏ qua kiểu của mock NestJS trong tệp kiểm thử
-// @ts-nocheck -- Các mock của bài kiểm thử không triển khai đầy đủ hợp đồng NestJS
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
-import { JwtAuthGuard, RolesGuard } from "./jwt-auth.guard.ts";
+import { JwtAuthGuard, RolesGuard } from "./jwt-auth.guard.js";
 
-/** Tạo ngữ cảnh HTTP tối thiểu để gọi trực tiếp các guard */
-function createContext(request) {
+type FakeRequest = {
+  headers: { authorization?: string };
+  user?: unknown;
+};
+
+function createContext(request: unknown) {
   return {
     getHandler: () => "handler",
     getClass: () => "controller",
     switchToHttp: () => ({
       getRequest: () => request,
     }),
-  };
+  } as never;
 }
 
-/** Xác nhận guard lấy vai trò và đơn vị mới nhất từ cơ sở dữ liệu */
-test("JWT guard lấy vai trò và đơn vị hiện tại từ cơ sở dữ liệu", async () => {
-  const request = { headers: { authorization: "Bearer valid-token" } };
+test("JWT guard resolves current role and unit from the database", async () => {
+  const request: FakeRequest = { headers: { authorization: "Bearer valid-token" } };
   const jwtService = {
     verifyAsync: async () => ({
       sub: "user-id",
@@ -38,7 +39,7 @@ test("JWT guard lấy vai trò và đơn vị hiện tại từ cơ sở dữ li
       }),
     },
   };
-  const guard = new JwtAuthGuard(jwtService, prisma);
+  const guard = new JwtAuthGuard(jwtService as never, prisma as never);
 
   assert.equal(await guard.canActivate(createContext(request)), true);
   assert.deepEqual(request.user, {
@@ -48,12 +49,11 @@ test("JWT guard lấy vai trò và đơn vị hiện tại từ cơ sở dữ li
   });
 });
 
-/** Xác nhận guard từ chối yêu cầu không có mã Bearer */
-test("JWT guard từ chối yêu cầu không có mã Bearer", async () => {
-  const request = { headers: {} };
+test("JWT guard rejects requests without a Bearer token", async () => {
+  const request: FakeRequest = { headers: {} };
   const guard = new JwtAuthGuard(
-    { verifyAsync: async () => ({}) },
-    { user: { findUnique: async () => null } },
+    { verifyAsync: async () => ({}) } as never,
+    { user: { findUnique: async () => null } } as never,
   );
 
   await assert.rejects(
@@ -62,18 +62,60 @@ test("JWT guard từ chối yêu cầu không có mã Bearer", async () => {
   );
 });
 
-/** Xác nhận guard vai trò từ chối người dùng không đủ quyền */
-test("guard vai trò từ chối người dùng không có vai trò phù hợp", () => {
-  const request = {
+test("roles guard rejects an authenticated user with the wrong role", () => {
+  const request: FakeRequest = {
+    headers: {},
     user: { id: "unit-user", role: "UNIT", unitId: "unit-id" },
   };
   const reflector = {
     getAllAndOverride: () => ["ADMIN"],
   };
-  const guard = new RolesGuard(reflector);
+  const guard = new RolesGuard(reflector as never);
 
   assert.throws(
     () => guard.canActivate(createContext(request)),
     ForbiddenException,
   );
+});
+
+test("JWT guard rejects a deactivated account even with a valid token", async () => {
+  const request: FakeRequest = { headers: { authorization: "Bearer valid-token" } };
+  const guard = new JwtAuthGuard(
+    { verifyAsync: async () => ({ sub: "user-id", tokenUse: "access" }) } as never,
+    {
+      user: {
+        findUnique: async () => ({
+          id: "user-id",
+          role: "ADMIN",
+          unitId: null,
+          isActive: false,
+          unit: null,
+        }),
+      },
+    } as never,
+  );
+
+  await assert.rejects(
+    guard.canActivate(createContext(request)),
+    UnauthorizedException,
+  );
+});
+
+test("JWT guard rejects a refresh-style token that is not an access token", async () => {
+  const request: FakeRequest = { headers: { authorization: "Bearer valid-token" } };
+  const guard = new JwtAuthGuard(
+    { verifyAsync: async () => ({ sub: "user-id", tokenUse: "refresh" }) } as never,
+    { user: { findUnique: async () => null } } as never,
+  );
+
+  await assert.rejects(
+    guard.canActivate(createContext(request)),
+    UnauthorizedException,
+  );
+});
+
+test("roles guard allows a request when no roles are required", () => {
+  const guard = new RolesGuard({ getAllAndOverride: () => undefined } as never);
+
+  assert.equal(guard.canActivate(createContext({ headers: {} })), true);
 });

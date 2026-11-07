@@ -62,7 +62,7 @@ Mã HTTP khuyến nghị: `400` dữ liệu sai; `401` chưa xác thực/token s
 - `GET /users` — ADMIN. Lọc `role`, `unit_id`, `is_active`; phân trang.
 - `POST /users` — ADMIN. Tạo tài khoản `UNIT` hoặc `ADMIN`; validate `unit_id` theo role và tính duy nhất tài khoản cho đơn vị. Sinh mật khẩu tạm hoặc nhận mật khẩu theo chính sách; luôn đặt `must_change_password = true`. Không bao giờ trả password hash.
 - `GET /users/:id` — ADMIN; UNIT chỉ được xem chính mình.
-- `PATCH /users/:id` — ADMIN cập nhật `full_name`, `email`, `phone`, trạng thái hoạt động, đơn vị/role theo quy tắc. Người dùng chỉ được cập nhật thông tin cá nhân cho phép; không tự nâng quyền hoặc chuyển đơn vị.
+- `PATCH /users/:id` — ADMIN cập nhật `full_name`, `email`, `phone`, đơn vị/role theo quy tắc. Người dùng chỉ được cập nhật thông tin cá nhân cho phép; không tự nâng quyền hoặc chuyển đơn vị.
 - `POST /users/:id/reset-password` — ADMIN. Sinh/đặt mật khẩu tạm; đặt `must_change_password = true`, thu hồi refresh token cũ. Chỉ hiển thị mật khẩu tạm một lần nếu backend sinh mật khẩu.
 - `PATCH /users/:id/status` — ADMIN. Khóa/kích hoạt tài khoản; cân nhắc thu hồi toàn bộ refresh token khi khóa.
 

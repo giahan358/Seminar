@@ -7,12 +7,54 @@ Hướng dẫn này dành cho môi trường phát triển local trên Windows v
 - Node.js `20.19.0` trở lên và npm
 - Docker Desktop đang chạy
 
-- Cách tìm tài khoản admin và 34 tài khoản con để test POST/auth/login:
-vào file .env của folder be, thêm dòng :
+
+### Nạp dữ liệu mẫu (seed)
+
+Seed tạo tài khoản ADMIN, 34 đơn vị demo, kỳ thi đua, hồ sơ nháp và ngưỡng xếp loại
+để kiểm thử. Không cần seed nếu chỉ muốn xác nhận backend khởi động được.
+Tên đơn vị và tiêu chí trong dữ liệu demo không phải dữ liệu chính thức;
+cập nhật trước khi dùng thật.
+
+- Thông tin của 35 tài khoản:
+Vào .env của BE thêm 2 dòng sau:
 ```
-SEED_CREDENTIALS_FILE=admin-credentials.json
+SEED_CREDENTIALS_FILE=.seed-credentials.json
+SEED_ADMIN_PASSWORD= <mật-khẩu-bạn-tự-đặt>
 ```
-- Nhấn save-> Vào File Explorer vào vị trí chứa folder của project seminar sẽ thấy 1 file tên seed-credentials.json chứa thông tin tài khoản (nó không xuất hiện trong danh sách project của vs code)
+**Chỉ chạy seed 1 lần** khi mới clone. Các lần sau không cần chạy lại.
+
+Từ terminal đang ở thư mục `be`:
+
+```powershell
+cd be
+npm run db:seed
+```
+
+Sau khi chạy xong, file **`be\.seed-credentials.json`** được tạo, chứa:
+
+- `admin` + password lấy từ `SEED_ADMIN_PASSWORD` (tự đặt mật khẩu) trong `.env`
+- `coso01` … `coso34` + password random riêng cho từng máy
+
+**Cách mở file:**
+
+- **VS Code**: mở thư mục `be/` → file `.seed-credentials.json` hiện ở cây thư mục bên trái
+  (Windows không ẩn dotfile). Nếu không thấy, kiểm tra `files.exclude` trong Settings.
+- **File Explorer**: vào `Seminar\be\` → file hiện bình thường (Windows không ẩn dotfile).
+
+> File này **không hiện** khi bạn mở workspace ở root `Seminar/` — vì nó nằm trong `be/`.
+> File đã có trong `.gitignore` — **không commit, không share qua chat**.
+
+**Đăng nhập:**
+
+- Username: `admin`
+- Password:  (giá trị bạn đã đổi trong `.env`)
+
+Hệ thống **bắt đổi mật khẩu ngay** ở lần login đầu (`mustChangePassword = true`).
+Các user `coso01`–`coso34` dùng password random trong file để test nếu cần;
+nếu không cần test user thường, có thể bỏ qua (admin tạo user mới qua API `POST /users`).
+
+**Nếu mất password seed:** đặt `$env:SEED_ROTATE_PASSWORDS = "true"` rồi chạy lại seed
+để xoay password mới. Lưu ý: password cũ mất hiệu lực hoàn toàn.
 
 ## Lần đầu clone project
 
@@ -164,26 +206,6 @@ Lệnh trên giữ nguyên volume dữ liệu PostgreSQL. Không dùng `docker c
 ## Các bước tùy chọn — hiện tại không cần thực hiện
 
 Các bước dưới đây **không bắt buộc để cài dependencies, áp dụng migration hoặc khởi động backend**. Thực hiện khi nhóm bắt đầu cần dữ liệu mẫu, giao diện quản trị database hoặc kiểm thử Web Push.
-
-### Nạp dữ liệu mẫu (seed)
-
-Seed hữu ích để có tài khoản ADMIN, 34 đơn vị demo, kỳ thi đua, hồ sơ nháp và ngưỡng xếp loại để kiểm thử. Không cần seed nếu hiện tại chỉ muốn xác nhận backend khởi động được. Tên đơn vị và tiêu chí trong dữ liệu demo không phải dữ liệu chính thức; cập nhật trước khi dùng thật.
-
-Từ terminal đang ở thư mục `be`, đặt mật khẩu ADMIN tạm thời, chạy seed rồi xóa biến khỏi phiên:
-
-```powershell
-$env:SEED_ADMIN_PASSWORD = Read-Host "Nhập mật khẩu tạm thời cho tài khoản seed admin"
-$env:SEED_CREDENTIALS_FILE = ".seed-credentials.json"
-npm run db:seed
-Remove-Item Env:SEED_ADMIN_PASSWORD
-Remove-Item Env:SEED_CREDENTIALS_FILE
-```
-
-Seed tạo user ADMIN `admin` / `admin@seminar.local` (có thể đổi qua `SEED_ADMIN_USERNAME` và `SEED_ADMIN_EMAIL`) cùng user UNIT `coso01` đến `coso34` với mật khẩu riêng ngẫu nhiên. File `.seed-credentials.json` chứa thông tin đăng nhập ban đầu; lưu trữ an toàn rồi xóa sau khi sử dụng. Tài khoản yêu cầu đổi mật khẩu ở lần đăng nhập đầu. Chạy seed lại không đổi mật khẩu đã tạo.
-
-Nếu seed sắp tạo tài khoản mới hoặc xoay mật khẩu, `SEED_CREDENTIALS_FILE` là bắt buộc; nếu thiếu, seed dừng trước khi thay đổi dữ liệu tài khoản. Mật khẩu không được in ra terminal/log.
-
-Nếu mất mật khẩu seed, có thể đặt `$env:SEED_ROTATE_PASSWORDS = "true"` trước khi seed để xoay mật khẩu; thao tác này làm mật khẩu cũ mất hiệu lực.
 
 ### Kiểm thử backend
 

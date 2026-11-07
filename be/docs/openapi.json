@@ -1,0 +1,1003 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Hệ thống đang hoạt động",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "status": "ok",
+                    "timestamp": "2026-11-03T00:00:00.000Z",
+                    "database": "up"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cơ sở dữ liệu không khả dụng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Kiểm tra trạng thái API và cơ sở dữ liệu",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/evaluation-periods": {
+      "get": {
+        "operationId": "EvaluationPeriodsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Danh sách đợt đánh giá kèm ngưỡng xếp loại"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Danh sách đợt đánh giá",
+        "tags": [
+          "Đợt đánh giá"
+        ]
+      },
+      "post": {
+        "operationId": "EvaluationPeriodsController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Tạo đợt đánh giá thành công"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tạo đợt đánh giá",
+        "tags": [
+          "Đợt đánh giá"
+        ]
+      }
+    },
+    "/api/v1/evaluation-periods/{id}": {
+      "get": {
+        "operationId": "EvaluationPeriodsController_findOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Thông tin chi tiết đợt đánh giá"
+          },
+          "404": {
+            "description": "Không tìm thấy đợt đánh giá",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Xem chi tiết đợt đánh giá",
+        "tags": [
+          "Đợt đánh giá"
+        ]
+      },
+      "patch": {
+        "operationId": "EvaluationPeriodsController_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Cập nhật đợt đánh giá thành công"
+          },
+          "404": {
+            "description": "Không tìm thấy đợt đánh giá",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cập nhật đợt đánh giá",
+        "tags": [
+          "Đợt đánh giá"
+        ]
+      },
+      "delete": {
+        "operationId": "EvaluationPeriodsController_remove",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Xóa đợt đánh giá thành công"
+          },
+          "400": {
+            "description": "Đợt đánh giá đã có dữ liệu, không thể xóa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy đợt đánh giá",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Xóa đợt đánh giá",
+        "tags": [
+          "Đợt đánh giá"
+        ]
+      }
+    },
+    "/api/v1/evaluation-periods/{id}/thresholds": {
+      "put": {
+        "operationId": "EvaluationPeriodsController_upsertThresholds",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Cập nhật ngưỡng xếp loại thành công"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tạo hoặc cập nhật ngưỡng xếp loại",
+        "tags": [
+          "Đợt đánh giá"
+        ]
+      }
+    },
+    "/api/v1/criteria": {
+      "get": {
+        "operationId": "CriteriaController_findByPeriod",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Root criteria and nested children"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get criteria tree for an evaluation period",
+        "tags": [
+          "Criteria"
+        ]
+      },
+      "post": {
+        "operationId": "CriteriaController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Criterion created"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a criterion",
+        "tags": [
+          "Criteria"
+        ]
+      }
+    },
+    "/api/v1/criteria/{id}": {
+      "get": {
+        "operationId": "CriteriaController_findOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Criterion details"
+          },
+          "404": {
+            "description": "Criterion not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a criterion with its parent and children",
+        "tags": [
+          "Criteria"
+        ]
+      },
+      "patch": {
+        "operationId": "CriteriaController_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Criterion updated"
+          },
+          "404": {
+            "description": "Criterion not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a criterion",
+        "tags": [
+          "Criteria"
+        ]
+      },
+      "delete": {
+        "operationId": "CriteriaController_remove",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Criterion deleted"
+          },
+          "400": {
+            "description": "Criterion has children or scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Criterion not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a criterion",
+        "tags": [
+          "Criteria"
+        ]
+      }
+    },
+    "/api/v1/audit-logs": {
+      "get": {
+        "operationId": "AuditLogsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Paginated audit logs"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List audit log entries",
+        "tags": [
+          "Audit Logs"
+        ]
+      }
+    },
+    "/api/v1/audit-logs/{id}": {
+      "get": {
+        "operationId": "AuditLogsController_findOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Audit log details"
+          },
+          "404": {
+            "description": "Audit log not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get an audit log entry",
+        "tags": [
+          "Audit Logs"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard": {
+      "get": {
+        "operationId": "DashboardController_getOverview",
+        "parameters": [
+          {
+            "name": "periodId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOverviewDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Tổng quan dashboard của một đợt đánh giá",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/deductions": {
+      "get": {
+        "operationId": "DashboardController_getDeductions",
+        "parameters": [
+          {
+            "name": "periodId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDeductionsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Danh sách tiêu chí bị Admin trừ điểm",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/leaderboard": {
+      "get": {
+        "operationId": "DashboardController_getLeaderboard",
+        "parameters": [
+          {
+            "name": "periodId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardLeaderboardDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Bảng xếp hạng thời gian thực của một đợt đánh giá",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard/score-distribution": {
+      "get": {
+        "operationId": "DashboardController_getScoreDistribution",
+        "parameters": [
+          {
+            "name": "periodId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardScoreDistributionDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Phân bố xếp loại của các hồ sơ đã chốt",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Seminar Evaluation API",
+    "description": "API documentation for the Seminar evaluation application.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "access-token": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "Dán accessToken nhận được từ POST /api/v1/auth/login."
+      }
+    },
+    "schemas": {
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin",
+            "description": "Tên đăng nhập"
+          },
+          "password": {
+            "type": "string",
+            "example": "123456",
+            "description": "Mật khẩu"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ]
+      },
+      "DashboardPeriodDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "year": {
+            "type": "number",
+            "example": 2026
+          },
+          "name": {
+            "type": "string",
+            "example": "Đợt thi đua năm 2026"
+          },
+          "phase": {
+            "type": "string",
+            "example": "FIRST_REVIEW"
+          },
+          "maxTotalScore": {
+            "type": "number",
+            "example": 300
+          }
+        },
+        "required": [
+          "id",
+          "year",
+          "name",
+          "phase",
+          "maxTotalScore"
+        ]
+      },
+      "EvaluationStatusCountsDto": {
+        "type": "object",
+        "properties": {
+          "DRAFT": {
+            "type": "number",
+            "example": 4
+          },
+          "PENDING_REVIEW": {
+            "type": "number",
+            "example": 12
+          },
+          "SUPPLEMENT_REQUESTED": {
+            "type": "number",
+            "example": 3
+          },
+          "SUPPLEMENT_SUBMITTED": {
+            "type": "number",
+            "example": 2
+          },
+          "SUPPLEMENT_EXPIRED": {
+            "type": "number",
+            "example": 1
+          },
+          "FINALIZED": {
+            "type": "number",
+            "example": 12
+          }
+        },
+        "required": [
+          "DRAFT",
+          "PENDING_REVIEW",
+          "SUPPLEMENT_REQUESTED",
+          "SUPPLEMENT_SUBMITTED",
+          "SUPPLEMENT_EXPIRED",
+          "FINALIZED"
+        ]
+      },
+      "OfficialResultsDto": {
+        "type": "object",
+        "properties": {
+          "totalFinalScore": {
+            "type": "number",
+            "example": 2550
+          },
+          "averageFinalScore": {
+            "type": "number",
+            "example": 255
+          },
+          "averageFinalPercent": {
+            "type": "number",
+            "example": 85
+          }
+        },
+        "required": [
+          "totalFinalScore",
+          "averageFinalScore",
+          "averageFinalPercent"
+        ]
+      },
+      "ScoreDistributionItemDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "string",
+            "example": "EXCELLENT"
+          },
+          "label": {
+            "type": "string",
+            "example": "Hoàn thành xuất sắc nhiệm vụ"
+          },
+          "color": {
+            "type": "string",
+            "example": "#16a34a",
+            "nullable": true
+          },
+          "count": {
+            "type": "number",
+            "example": 5
+          },
+          "percent": {
+            "type": "number",
+            "example": 41.67
+          }
+        },
+        "required": [
+          "rating",
+          "label",
+          "count",
+          "percent"
+        ]
+      },
+      "ScoreDistributionDto": {
+        "type": "object",
+        "properties": {
+          "finalizedCount": {
+            "type": "number",
+            "example": 12
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoreDistributionItemDto"
+            }
+          }
+        },
+        "required": [
+          "finalizedCount",
+          "items"
+        ]
+      },
+      "DashboardOverviewDto": {
+        "type": "object",
+        "properties": {
+          "periodId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "period": {
+            "$ref": "#/components/schemas/DashboardPeriodDto"
+          },
+          "totalUnits": {
+            "type": "number",
+            "example": 34
+          },
+          "statusCounts": {
+            "$ref": "#/components/schemas/EvaluationStatusCountsDto"
+          },
+          "submittedCount": {
+            "type": "number",
+            "example": 30
+          },
+          "notSubmittedCount": {
+            "type": "number",
+            "example": 4
+          },
+          "supplementPendingCount": {
+            "type": "number",
+            "example": 5
+          },
+          "progressPercent": {
+            "type": "number",
+            "example": 88.24
+          },
+          "finalizedCount": {
+            "type": "number",
+            "example": 12
+          },
+          "notFinalizedCount": {
+            "type": "number",
+            "example": 22
+          },
+          "officialResults": {
+            "$ref": "#/components/schemas/OfficialResultsDto"
+          },
+          "scoreDistribution": {
+            "$ref": "#/components/schemas/ScoreDistributionDto"
+          }
+        },
+        "required": [
+          "periodId",
+          "period",
+          "totalUnits",
+          "statusCounts",
+          "submittedCount",
+          "notSubmittedCount",
+          "supplementPendingCount",
+          "progressPercent",
+          "finalizedCount",
+          "notFinalizedCount",
+          "officialResults",
+          "scoreDistribution"
+        ]
+      },
+      "CriterionDeductionDto": {
+        "type": "object",
+        "properties": {
+          "criterionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "example": "A1"
+          },
+          "name": {
+            "type": "string",
+            "example": "Tổ chức học tập nghị quyết, chủ trương"
+          },
+          "unitsDeducted": {
+            "type": "number",
+            "example": 15
+          },
+          "totalPointsDeducted": {
+            "type": "number",
+            "example": 25.5
+          }
+        },
+        "required": [
+          "criterionId",
+          "code",
+          "name",
+          "unitsDeducted",
+          "totalPointsDeducted"
+        ]
+      },
+      "DashboardDeductionsDto": {
+        "type": "object",
+        "properties": {
+          "periodId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CriterionDeductionDto"
+            }
+          }
+        },
+        "required": [
+          "periodId",
+          "items"
+        ]
+      },
+      "LeaderboardItemDto": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": "number",
+            "example": 1
+          },
+          "scoreRank": {
+            "type": "number",
+            "example": 1
+          },
+          "evaluationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitCode": {
+            "type": "string",
+            "example": "DV001"
+          },
+          "unitName": {
+            "type": "string",
+            "example": "Đơn vị A"
+          },
+          "status": {
+            "type": "string",
+            "example": "PENDING_REVIEW"
+          },
+          "submittedAt": {
+            "type": "string",
+            "example": "2026-01-15T08:00:00.000Z",
+            "format": "date-time",
+            "nullable": true
+          },
+          "maxTotalScore": {
+            "type": "number",
+            "example": 300
+          },
+          "selfTotal": {
+            "type": "number",
+            "example": 280
+          },
+          "currentTotal": {
+            "type": "number",
+            "example": 285
+          },
+          "currentPercent": {
+            "type": "number",
+            "example": 95
+          },
+          "suggestedRating": {
+            "type": "string",
+            "example": "EXCELLENT",
+            "nullable": true
+          }
+        },
+        "required": [
+          "rank",
+          "scoreRank",
+          "evaluationId",
+          "unitId",
+          "unitCode",
+          "unitName",
+          "status",
+          "submittedAt",
+          "maxTotalScore",
+          "selfTotal",
+          "currentTotal",
+          "currentPercent",
+          "suggestedRating"
+        ]
+      },
+      "DashboardLeaderboardDto": {
+        "type": "object",
+        "properties": {
+          "periodId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalUnits": {
+            "type": "number",
+            "example": 34
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeaderboardItemDto"
+            }
+          }
+        },
+        "required": [
+          "periodId",
+          "totalUnits",
+          "items"
+        ]
+      },
+      "DashboardScoreDistributionDto": {
+        "type": "object",
+        "properties": {
+          "finalizedCount": {
+            "type": "number",
+            "example": 12
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoreDistributionItemDto"
+            }
+          },
+          "periodId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "finalizedCount",
+          "items",
+          "periodId"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "required": [
+          "statusCode",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "example": 400
+          },
+          "code": {
+            "type": "string",
+            "example": "VALIDATION_ERROR"
+          },
+          "message": {
+            "type": "string",
+            "example": "Yêu cầu không hợp lệ"
+          },
+          "details": {
+            "nullable": true,
+            "example": [
+              {
+                "field": "username",
+                "messages": [
+                  "Tên đăng nhập là bắt buộc"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "access-token": []
+    }
+  ]
+}

@@ -5,21 +5,24 @@ import { validate } from "class-validator";
 import { PaginationQueryDto } from "../dto/pagination-query.dto.js";
 import { buildPaginationOptions, createPaginatedResult } from "./pagination.util.js";
 
-test("pagination DTO supplies standard defaults", () => {
+/** Xác nhận DTO phân trang tự điền các giá trị mặc định */
+test("DTO phân trang điền các giá trị mặc định", () => {
   const query = plainToInstance(PaginationQueryDto, {});
   assert.equal(query.page, 1);
   assert.equal(query.pageSize, 20);
   assert.equal(query.sortOrder, "desc");
 });
 
-test("pagination DTO rejects page sizes above 100 and pages below 1", async () => {
+/** Xác nhận DTO từ chối kích thước trang quá lớn và số trang không hợp lệ */
+test("DTO phân trang từ chối kích thước quá 100 và số trang nhỏ hơn 1", async () => {
   const tooMany = plainToInstance(PaginationQueryDto, { pageSize: "101" });
   const invalidPage = plainToInstance(PaginationQueryDto, { page: "0" });
   assert.ok((await validate(tooMany)).some((error) => error.property === "pageSize"));
   assert.ok((await validate(invalidPage)).some((error) => error.property === "page"));
 });
 
-test("pagination options whitelist sorting and always add an id tie-breaker", () => {
+/** Xác nhận tùy chọn sắp xếp chỉ nhận trường cho phép và thêm khóa phụ ổn định */
+test("tùy chọn phân trang chỉ nhận trường sắp xếp cho phép và thêm khóa phụ", () => {
   const allowed = buildPaginationOptions(
     plainToInstance(PaginationQueryDto, { page: "3", pageSize: "10", sortBy: "name", sortOrder: "asc" }),
     ["name", "createdAt"],
@@ -33,7 +36,8 @@ test("pagination options whitelist sorting and always add an id tie-breaker", ()
   assert.deepEqual(rejected.orderBy, [{ createdAt: "desc" }, { id: "asc" }]);
 });
 
-test("createPaginatedResult returns the standardized response shape", () => {
+/** Xác nhận kết quả phân trang có cấu trúc phản hồi thống nhất */
+test("kết quả phân trang trả về cấu trúc phản hồi chuẩn", () => {
   const items = [{ id: "one" }];
   assert.deepEqual(createPaginatedResult(items, 7, 2, 5), { items, page: 2, pageSize: 5, total: 7 });
 });

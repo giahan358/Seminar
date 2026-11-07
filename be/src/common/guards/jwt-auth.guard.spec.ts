@@ -1,8 +1,11 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- Cho phép bỏ qua kiểu của mock NestJS trong tệp kiểm thử
+// @ts-nocheck -- Các mock của bài kiểm thử không triển khai đầy đủ hợp đồng NestJS
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { JwtAuthGuard, RolesGuard } from "./jwt-auth.guard.ts";
 
+/** Tạo ngữ cảnh HTTP tối thiểu để gọi trực tiếp các guard */
 function createContext(request) {
   return {
     getHandler: () => "handler",
@@ -13,7 +16,8 @@ function createContext(request) {
   };
 }
 
-test("JWT guard resolves current role and unit from the database", async () => {
+/** Xác nhận guard lấy vai trò và đơn vị mới nhất từ cơ sở dữ liệu */
+test("JWT guard lấy vai trò và đơn vị hiện tại từ cơ sở dữ liệu", async () => {
   const request = { headers: { authorization: "Bearer valid-token" } };
   const jwtService = {
     verifyAsync: async () => ({
@@ -44,7 +48,8 @@ test("JWT guard resolves current role and unit from the database", async () => {
   });
 });
 
-test("JWT guard rejects requests without a Bearer token", async () => {
+/** Xác nhận guard từ chối yêu cầu không có mã Bearer */
+test("JWT guard từ chối yêu cầu không có mã Bearer", async () => {
   const request = { headers: {} };
   const guard = new JwtAuthGuard(
     { verifyAsync: async () => ({}) },
@@ -57,7 +62,8 @@ test("JWT guard rejects requests without a Bearer token", async () => {
   );
 });
 
-test("roles guard rejects an authenticated user with the wrong role", () => {
+/** Xác nhận guard vai trò từ chối người dùng không đủ quyền */
+test("guard vai trò từ chối người dùng không có vai trò phù hợp", () => {
   const request = {
     user: { id: "unit-user", role: "UNIT", unitId: "unit-id" },
   };

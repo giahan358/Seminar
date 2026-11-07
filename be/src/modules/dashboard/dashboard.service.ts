@@ -9,6 +9,7 @@ import type {
   ScoreDistributionDto,
   ScoreDistributionItemDto,
 } from "./dto/dashboard-overview.dto.js";
+import type { LeaderboardItemDto } from "./dto/leaderboard.dto.js";
 
 const EVALUATION_STATUSES = [
   "DRAFT",
@@ -169,6 +170,35 @@ export class DashboardService {
     return { periodId, ...distribution };
   }
 
+  async getLeaderboard(periodId: string) {
+    await this.findPeriodOrThrow(periodId);
+    const items = await this.prisma.leaderboard.findMany({
+      where: { periodId },
+      orderBy: { rank: "asc" },
+      select: {
+        rank: true,
+        scoreRank: true,
+        evaluationId: true,
+        unitId: true,
+        unitCode: true,
+        unitName: true,
+        status: true,
+        submittedAt: true,
+        maxTotalScore: true,
+        selfTotal: true,
+        currentTotal: true,
+        currentPercent: true,
+        suggestedRating: true,
+      },
+    });
+
+    return {
+      periodId,
+      totalUnits: items.length,
+      items: items.map((item) => this.toLeaderboardItemDto(item)),
+    };
+  }
+
   private async findPeriodOrThrow(periodId: string) {
     const period = await this.prisma.evaluationPeriod.findUnique({
       where: { id: periodId },
@@ -189,6 +219,38 @@ export class DashboardService {
     }
 
     return period;
+  }
+
+  private toLeaderboardItemDto(item: {
+    rank: bigint | null;
+    scoreRank: bigint | null;
+    evaluationId: string | null;
+    unitId: string | null;
+    unitCode: string | null;
+    unitName: string | null;
+    status: string | null;
+    submittedAt: Date | null;
+    maxTotalScore: Parameters<typeof toApiNumber>[0];
+    selfTotal: Parameters<typeof toApiNumber>[0];
+    currentTotal: Parameters<typeof toApiNumber>[0];
+    currentPercent: Parameters<typeof toApiNumber>[0];
+    suggestedRating: string | null;
+  }): LeaderboardItemDto {
+    return {
+      rank: Number(item.rank),
+      scoreRank: Number(item.scoreRank),
+      evaluationId: item.evaluationId ?? "",
+      unitId: item.unitId ?? "",
+      unitCode: item.unitCode ?? "",
+      unitName: item.unitName ?? "",
+      status: item.status ?? "",
+      submittedAt: item.submittedAt?.toISOString() ?? null,
+      maxTotalScore: toApiNumber(item.maxTotalScore) ?? 0,
+      selfTotal: toApiNumber(item.selfTotal) ?? 0,
+      currentTotal: toApiNumber(item.currentTotal) ?? 0,
+      currentPercent: toApiNumber(item.currentPercent) ?? 0,
+      suggestedRating: item.suggestedRating,
+    };
   }
 
   private async getScoreDistributionForPeriod(

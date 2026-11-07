@@ -57,6 +57,9 @@ function makeService(overrides = {}) {
         return [];
       },
     },
+    leaderboard: {
+      findMany: async () => [],
+    },
     ...overrides.prisma,
   };
 
@@ -142,4 +145,98 @@ test("deductions only include positive deductions from finalized evaluations", a
     calls.criterionScoreFindMany[0].where.evaluation.status,
     "FINALIZED",
   );
+});
+
+test("leaderboard returns current scores from the view ordered by rank", async () => {
+  const calls = [];
+  const { service } = makeService({
+    prisma: {
+      leaderboard: {
+        findMany: async (args) => {
+          calls.push(args);
+          return [
+            {
+              rank: 1n,
+              scoreRank: 1n,
+              evaluationId: "evaluation-a",
+              unitId: "unit-a",
+              unitCode: "DV001",
+              unitName: "Đơn vị A",
+              status: "PENDING_REVIEW",
+              submittedAt: new Date("2026-01-15T08:00:00.000Z"),
+              maxTotalScore: new Prisma.Decimal(300),
+              selfTotal: new Prisma.Decimal(280),
+              currentTotal: new Prisma.Decimal(285.25),
+              currentPercent: new Prisma.Decimal(95.0833),
+              suggestedRating: "EXCELLENT",
+            },
+            {
+              rank: 2n,
+              scoreRank: 1n,
+              evaluationId: "evaluation-b",
+              unitId: "unit-b",
+              unitCode: "DV002",
+              unitName: "Đơn vị B",
+              status: "DRAFT",
+              submittedAt: null,
+              maxTotalScore: new Prisma.Decimal(300),
+              selfTotal: new Prisma.Decimal(285.25),
+              currentTotal: new Prisma.Decimal(285.25),
+              currentPercent: new Prisma.Decimal(95.0833),
+              suggestedRating: null,
+            },
+          ];
+        },
+      },
+    },
+  });
+
+  const result = await service.getLeaderboard(period.id);
+
+  assert.deepEqual(result, {
+    periodId: period.id,
+    totalUnits: 2,
+    items: [
+      {
+        rank: 1,
+        scoreRank: 1,
+        evaluationId: "evaluation-a",
+        unitId: "unit-a",
+        unitCode: "DV001",
+        unitName: "Đơn vị A",
+        status: "PENDING_REVIEW",
+        submittedAt: "2026-01-15T08:00:00.000Z",
+        maxTotalScore: 300,
+        selfTotal: 280,
+        currentTotal: 285.25,
+        currentPercent: 95.08,
+        suggestedRating: "EXCELLENT",
+      },
+      {
+        rank: 2,
+        scoreRank: 1,
+        evaluationId: "evaluation-b",
+        unitId: "unit-b",
+        unitCode: "DV002",
+        unitName: "Đơn vị B",
+        status: "DRAFT",
+        submittedAt: null,
+        maxTotalScore: 300,
+        selfTotal: 285.25,
+        currentTotal: 285.25,
+        currentPercent: 95.08,
+        suggestedRating: null,
+      },
+    ],
+  });
+  assert.deepEqual(calls[0].where, { periodId: period.id });
+  assert.deepEqual(calls[0].orderBy, { rank: "asc" });
+});
+
+test("leaderboard returns an empty list when its period has no evaluations", async () => {
+  const { service } = makeService();
+
+  const result = await service.getLeaderboard(period.id);
+
+  assert.deepEqual(result, { periodId: period.id, totalUnits: 0, items: [] });
 });

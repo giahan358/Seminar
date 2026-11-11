@@ -1,11 +1,15 @@
-import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
+import { Controller, Get, Inject, ServiceUnavailableException } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 @ApiTags("Health")
 @Controller("api/v1/health")
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  //constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService)
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "Kiểm tra trạng thái API và cơ sở dữ liệu" })
@@ -15,8 +19,13 @@ export class HealthController {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
       return { status: "ok", timestamp: new Date().toISOString(), database: "up" };
-    } catch {
-      throw new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE", message: "Không thể kết nối cơ sở dữ liệu" });
-    }
+    } catch (error) {
+  console.error("[HealthCheck] Database connection failed:", error);
+
+  throw new ServiceUnavailableException({
+    code: "DATABASE_UNAVAILABLE",
+    message: "Không thể kết nối cơ sở dữ liệu",
+  });
+}
   }
 }

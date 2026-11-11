@@ -1,11 +1,12 @@
-import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
+import { Inject, Controller, Get, ServiceUnavailableException } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 @ApiTags("Health")
 @Controller("api/v1/health")
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  /** Inject dependency tường minh theo mẫu Auth để cùng luồng DB hoạt động trên tsx và bản build ESM */
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   @Get()
   @ApiOperation({ summary: "Kiểm tra trạng thái API và cơ sở dữ liệu" })

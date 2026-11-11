@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   UnauthorizedException,
+  SetMetadata,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Reflector } from "@nestjs/core";
@@ -12,6 +13,9 @@ import { PrismaService } from "../../prisma/prisma.service.js";
 import type { CurrentUser, UserRole } from "../decorators/current-user.js";
 import { AUTHORIZED_ROLES } from "../decorators/roles.decorator.js";
 import { ERROR_CODES } from "../constants/error-codes.js";
+
+/** Chỉ đánh dấu handler Auth cho phép truy cập khi còn cờ, không suy luận whitelist từ URL */
+export const AllowPasswordChange = () => SetMetadata("auth:allow-password-change", true);
 
 interface AuthenticatedRequest {
   headers: {
@@ -22,6 +26,8 @@ interface AuthenticatedRequest {
 
 interface AccessTokenPayload {
   sub?: unknown;
+  ver?: unknown;
+  exp?: unknown;
   tokenUse?: unknown;
 }
 
@@ -36,11 +42,13 @@ function unauthorized(): UnauthorizedException {
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  /** Inject hai nguồn xác thực tường minh, giữ hoạt động như nhau trên tsx và bản build ESM */
   constructor(
     @Inject(JwtService) private readonly jwtService: JwtService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
+  /** Kiểm JWT rồi trạng thái DB/version trước policy đổi mật khẩu, trả CurrentUser trước khi RolesGuard thực thi */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const authorization = request.headers.authorization;
@@ -52,13 +60,15 @@ export class JwtAuthGuard implements CanActivate {
 
     let payload: AccessTokenPayload;
     try {
-      payload = await this.jwtService.verifyAsync<AccessTokenPayload>(token);
+      payload = await this.jwtService.verifyAsync<AccessTokenPayload>(token, { algorithms: ["HS256"] });
     } catch {
       throw unauthorized();
     }
 
     if (
       typeof payload.sub !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.sub) ||
+      !Number.isInteger(payload.ver) || typeof payload.exp !== "number" || payload.exp <= Date.now() / 1000 ||
       payload.tokenUse !== "access"
     ) {
       throw unauthorized();
@@ -71,12 +81,19 @@ export class JwtAuthGuard implements CanActivate {
         role: true,
         unitId: true,
         isActive: true,
+        credentialVersion: true,
+        mustChangePassword: true,
         unit: { select: { isActive: true } },
       },
     });
 
-    if (!user?.isActive) {
+    if (!user?.isActive || user.credentialVersion !== payload.ver) {
       throw unauthorized();
+    }
+
+    // Metadata chỉ được gắn trên me/change-password, mọi route nghiệp vụ bị chặn trước khi kiểm role
+    if (user.mustChangePassword && !Reflect.getMetadata("auth:allow-password-change", context.getHandler())) {
+      throw new ForbiddenException({ statusCode: 403, code: "PASSWORD_CHANGE_REQUIRED", message: "Bạn phải đổi mật khẩu trước khi sử dụng chức năng này.", details: [] });
     }
 
     if (user.role === "ADMIN" && user.unitId === null) {

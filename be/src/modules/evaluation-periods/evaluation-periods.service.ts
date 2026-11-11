@@ -1,4 +1,4 @@
-import {
+import { Inject,
   BadRequestException,
   Injectable,
   NotFoundException,
@@ -14,7 +14,8 @@ import { buildPaginationOptions, createPaginatedResult } from "../../common/util
 
 @Injectable()
 export class EvaluationPeriodsService {
-  constructor(private readonly prisma: PrismaService) { }
+  /** Inject dependency tường minh theo mẫu Auth để cùng luồng DB hoạt động trên tsx và bản build ESM */
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) { }
 
   async findAll(query: PaginationQueryDto) {
     const { skip, take, orderBy } = buildPaginationOptions(

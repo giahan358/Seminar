@@ -27,6 +27,7 @@ model User {
   id                    String              @id @db.Uuid
   username              String              @unique @db.VarChar
   passwordHash          String              @map("password_hash") @db.VarChar
+  credentialVersion     Int                 @default(0) @map("credential_version")
   mustChangePassword    Boolean             @default(true) @map("must_change_password")
   fullName              String              @map("full_name") @db.VarChar
   email                 String?             @unique @db.VarChar
@@ -54,6 +55,9 @@ model User {
   notificationPreferences NotificationPreference[]
   telegramBinding       TelegramBinding?
   telegramLinkTokens    TelegramLinkToken[]
+  importSessions        ImportSession[]
+  onboardingTokens      OnboardingToken[]
+  credentialDispatches  CredentialDispatch[]
 
   @@map("users")
 }
@@ -174,6 +178,8 @@ model CriterionScore {
   adminScore      Decimal?    @map("admin_score") @db.Decimal
   adminComment    String?     @map("admin_comment") @db.Text
   needsSupplement Boolean     @default(false) @map("needs_supplement")
+  /// Thời điểm có thay đổi bổ sung thực tế, để null cho dữ liệu cũ vì updatedAt không chứng minh đã bổ sung
+  supplementedAt DateTime? @map("supplemented_at") @db.Timestamp(6)
   supplementNote  String?     @map("supplement_note") @db.Text
   reviewedById    String?     @map("reviewed_by_id") @db.Uuid
   reviewedAt      DateTime?   @map("reviewed_at") @db.Timestamp(6)
@@ -330,6 +336,11 @@ model NotificationDelivery {
   sentAt            DateTime?    @map("sent_at") @db.Timestamp(6)
   createdAt         DateTime     @map("created_at") @db.Timestamp(6)
   updatedAt         DateTime     @map("updated_at") @db.Timestamp(6)
+  /// Ba trường lease cùng null khi rảnh, cùng có giá trị khi worker nhận việc để tránh gửi trùng sau restart
+  claimedAt DateTime? @map("claimed_at") @db.Timestamp(6)
+  leaseUntil DateTime? @map("lease_until") @db.Timestamp(6)
+  claimToken String? @map("claim_token") @db.Uuid
+  reasonCode String? @map("reason_code") @db.VarChar
   notification      Notification @relation(fields: [notificationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([notificationId, channel])
@@ -416,4 +427,102 @@ view CriteriaDeductions {
   totalPointsDeducted Decimal @map("total_points_deducted") @db.Decimal
 
   @@map("v_criteria_deductions")
+}
+
+/// Phiên xem trước thuộc một admin, rows đã chuẩn hóa không chứa secret, xác nhận lại dùng khóa idempotency theo chủ sở hữu
+model ImportSession {
+  id String @id @db.Uuid
+  adminId String @map("admin_id") @db.Uuid
+  rows Json @db.Json
+  digest String @db.VarChar(64)
+  idempotencyKey String @map("idempotency_key") @db.VarChar
+  status String @default("PREVIEW") @db.VarChar
+  result Json? @db.Json
+  createdAt DateTime @map("created_at") @db.Timestamp(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamp(6)
+  admin User @relation(fields: [adminId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@unique([adminId, idempotencyKey])
+  @@index([status, expiresAt])
+  @@map("import_sessions")
+}
+
+/// Token mời đăng ký Push chỉ lưu hash, kiểm TTL và version khi dùng, usedAt null nghĩa là chưa tiêu thụ
+model OnboardingToken {
+  id String @id @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  purpose String @default("PUSH_REGISTRATION") @db.VarChar
+  credentialVersion Int @map("credential_version")
+  tokenHash String @unique @map("token_hash") @db.VarChar(64)
+  createdAt DateTime @map("created_at") @db.Timestamp(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  usedAt DateTime? @map("used_at") @db.Timestamp(6)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@index([userId, credentialVersion])
+  @@index([expiresAt])
+  @@map("onboarding_tokens")
+}
+
+/// Payload credential mã hóa tách khỏi hộp thư, unique theo version để reset không tái sử dụng việc gửi cũ
+model CredentialDispatch {
+  id String @id @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  credentialVersion Int @map("credential_version")
+  ciphertext Bytes
+  nonce Bytes
+  tag Bytes
+  keyId String @map("key_id") @db.VarChar
+  createdAt DateTime @map("created_at") @db.Timestamp(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  canceledAt DateTime? @map("canceled_at") @db.Timestamp(6)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deliveries CredentialDelivery[]
+  @@unique([userId, credentialVersion])
+  @@index([expiresAt])
+  @@map("credential_dispatches")
+}
+
+/// Kết quả từng kênh độc lập, lease nhận việc và reasonCode phân biệt thiếu subscription với lỗi provider
+model CredentialDelivery {
+  id String @id @db.Uuid
+  dispatchId String @map("dispatch_id") @db.Uuid
+  channel String @db.VarChar
+  status String @default("PENDING") @db.VarChar
+  attemptCount Int @default(0) @map("attempt_count")
+  nextAttemptAt DateTime? @map("next_attempt_at") @db.Timestamp(6)
+  reasonCode String? @map("reason_code") @db.VarChar
+  errorCode String? @map("error_code") @db.VarChar
+  message String? @db.VarChar
+  providerMessageId String? @map("provider_message_id") @db.VarChar
+  sentAt DateTime? @map("sent_at") @db.Timestamp(6)
+  createdAt DateTime @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @map("updated_at") @db.Timestamp(6)
+  /// Ba trường lease cùng null khi rảnh, cùng có giá trị khi worker nhận việc để tránh gửi trùng sau restart
+  claimedAt DateTime? @map("claimed_at") @db.Timestamp(6)
+  leaseUntil DateTime? @map("lease_until") @db.Timestamp(6)
+  claimToken String? @map("claim_token") @db.Uuid
+  dispatch CredentialDispatch @relation(fields: [dispatchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@unique([dispatchId, channel])
+  @@index([status, nextAttemptAt])
+  @@index([leaseUntil])
+  @@map("credential_deliveries")
+}
+
+/// Kết nối OA chỉ chứa token mã hóa, lease chống refresh song song, bảng này không tự bật kênh ZNS
+model ZaloConnection {
+  id String @id @db.Uuid
+  oaId String @unique @map("oa_id") @db.VarChar
+  ciphertext Bytes
+  nonce Bytes
+  tag Bytes
+  keyId String @map("key_id") @db.VarChar
+  tokenVersion Int @default(0) @map("token_version")
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt DateTime @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @map("updated_at") @db.Timestamp(6)
+  /// Ba trường lease cùng null khi rảnh, cùng có giá trị khi worker nhận việc để tránh gửi trùng sau restart
+  claimedAt DateTime? @map("claimed_at") @db.Timestamp(6)
+  leaseUntil DateTime? @map("lease_until") @db.Timestamp(6)
+  claimToken String? @map("claim_token") @db.Uuid
+  @@map("zalo_connections")
 }

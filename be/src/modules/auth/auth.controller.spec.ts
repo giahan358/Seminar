@@ -15,6 +15,7 @@ const CURRENT_USER: CurrentUser = {
   unitId: null,
 };
 
+/** Lấy status từ HttpException của pipe để phân biệt lỗi DTO với lỗi chạy test, kiểu khác trả undefined */
 function getStatus(error: unknown): number | undefined {
   if (
     typeof error === "object" &&
@@ -27,6 +28,7 @@ function getStatus(error: unknown): number | undefined {
   return undefined;
 }
 
+/** Tạo service ghi nhận lời gọi để xác nhận controller chỉ chuyển DTO, danh tính và IP mà không chứa nghiệp vụ DB */
 function makeController() {
   const calls: Record<string, unknown[][]> = {};
   const record = (name: string) => async (...args: unknown[]) => {
@@ -43,7 +45,7 @@ function makeController() {
   return { controller: new AuthController(service as never), calls };
 }
 
-// Chạy DTO qua ValidationPipe giống khi Nest xử lý request thật.
+// Chạy body qua pipe transform/whitelist để kiểm DTO độc lập, kiểm lỗi HTTP tiếng Việt đầy đủ nằm ở test tích hợp thật
 async function validate<T extends object>(
   dtoClass: new () => T,
   body: unknown,
@@ -56,10 +58,12 @@ async function validate<T extends object>(
   return pipe.transform(body, { type: "body", metatype: dtoClass });
 }
 
+/** Đọc metadata guard để kiểm thứ tự bảo vệ route, route public nhận danh sách rỗng */
 function guardsOf(handler: object): unknown[] {
   return Reflect.getMetadata("__guards__", handler) ?? [];
 }
 
+/** Kiểm metadata status của route POST để giữ 200 đúng contract thay vì mặc định 201 của Nest */
 function httpCodeOf(handler: object): number | undefined {
   return Reflect.getMetadata("__httpCode__", handler);
 }
@@ -73,7 +77,7 @@ test("login forwards the body to AuthService.login", async () => {
   const result = await controller.login(body);
 
   assert.deepEqual(result, { handledBy: "login" });
-  assert.deepEqual(calls.login?.[0], [body]);
+  assert.deepEqual(calls.login?.[0], [body, null]);
 });
 
 test("getMe passes the current user's id", async () => {
@@ -111,7 +115,7 @@ test("changePassword passes the current user and the body", async () => {
 
   await controller.changePassword(CURRENT_USER, body);
 
-  assert.deepEqual(calls.changePassword?.[0], [CURRENT_USER, body]);
+  assert.deepEqual(calls.changePassword?.[0], [CURRENT_USER, body, null]);
 });
 
 // ---------- Bảo vệ route ----------
@@ -174,16 +178,16 @@ test("RefreshTokenDto rejects an empty refresh token", async () => {
   );
 });
 
-test("ChangePasswordDto accepts a password of 8 to 72 characters", async () => {
+test("ChangePasswordDto accepts a password of 10 to 72 characters", async () => {
   const dto = await validate(ChangePasswordDto, {
     currentPassword: "old-password",
-    newPassword: "12345678",
+    newPassword: "MatKhauTot97",
   });
 
-  assert.equal(dto.newPassword, "12345678");
+  assert.equal(dto.newPassword, "MatKhauTot97");
 });
 
-test("ChangePasswordDto rejects a new password shorter than 8 characters", async () => {
+test("ChangePasswordDto rejects a new password shorter than 10 characters", async () => {
   await assert.rejects(
     validate(ChangePasswordDto, {
       currentPassword: "old-password",

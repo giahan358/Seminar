@@ -449,6 +449,7 @@ test("listing users rejects an unknown role filter", async () => {
   );
 });
 
+/** Kiểm reset tăng version cùng hash và cờ bắt đổi để token access cũ không dùng lại được sau cấp lại */
 test("resetPassword returns a fresh temporary password and forces a password change", async () => {
   const { service, calls } = makeService();
 
@@ -457,6 +458,7 @@ test("resetPassword returns a fresh temporary password and forces a password cha
   assert.equal(result.mustChangePassword, true);
   assert.ok(result.temporaryPassword.length >= 12);
   assert.equal(calls.update[0]?.data?.mustChangePassword, true);
+  assert.deepEqual(calls.update[0]?.data?.credentialVersion, { increment: 1 });
   assert.match(String(calls.update[0]?.data?.passwordHash), /^\$2[aby]\$/);
 });
 

@@ -4,10 +4,12 @@ import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import styles from "./LoginPage.module.css"; 
+import { applyApiFieldErrors } from "../../services/apiError";
 
 const { Title } = Typography;
 
 export default function LoginPage() {
+  const [form] = Form.useForm();
   const { login, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,6 +20,7 @@ export default function LoginPage() {
     return <Navigate to={from} replace />;
   }
 
+  /** Gửi thông tin đăng nhập thật, giữ điều hướng theo trạng thái user và gắn lỗi DTO đã dịch vào đúng ô thay vì chỉ hiện toast */
   const onFinish = async (values) => {
     setLoading(true);
     try {
@@ -30,6 +33,7 @@ export default function LoginPage() {
         navigate(from, { replace: true });
       }
     } catch (error) {
+      applyApiFieldErrors(form, error, ["username", "password"]);
       message.error(error.message || "Đăng nhập thất bại");
     } finally {
       setLoading(false);
@@ -47,7 +51,7 @@ export default function LoginPage() {
           <Alert message={location.state.message} type="warning" showIcon className={styles.alert} />
         )}
 
-        <Form name="login" onFinish={onFinish} size="large">
+        <Form form={form} name="login" onFinish={onFinish} size="large">
           <Form.Item name="username" rules={[{ required: true, message: "Vui lòng nhập tên đăng nhập!" }]}>
             <Input prefix={<UserOutlined />} placeholder="Tên đăng nhập (vd: coso01)" />
           </Form.Item>

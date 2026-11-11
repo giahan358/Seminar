@@ -250,3 +250,10 @@ Lịch sử xuất báo cáo: `report_type` (`SUMMARY_ALL_UNITS` — Bảng tổ
 3. **Tách biệt dữ liệu & cấu hình:** Thang điểm, mức xếp loại, số giờ bổ sung đều cấu hình theo đợt, Admin tự chỉnh mà không sửa code.
 4. **Minh bạch & truy vết:** `status_histories` (có cả thao tác tự động của hệ thống) và `audit_logs` ghi nhận mọi thay đổi điểm; `report_exports` lưu biên bản đã xuất.
 5. **Không dư thừa (3NF):** Điểm trừ, tổng điểm, xếp hạng được suy ra qua View, chỉ chốt lưu một lần khi khóa sổ.
+
+
+## Cập nhật VC03 ngày 12/11/2026
+
+Bổ sung năm bảng ImportSession/OnboardingToken/CredentialDispatch/CredentialDelivery/ZaloConnection, lease notification và supplementedAt; xem [thiết kế, ERD, TTL và ràng buộc VC03](VC03_DATABASE.md)
+
+Các phần mô tả số bảng phía trên là thiết kế lịch sử, schema và migration hiện tại là nguồn triển khai chính thức

@@ -1,170 +1,87 @@
-import {
-  ArgumentsHost,
-  Catch,
-  ExceptionFilter,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from "@nestjs/common";
-import { ERROR_CODES, type ErrorCode } from "../constants/error-codes.js";
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from "@nestjs/common";
+import { ERROR_CODES } from "../constants/error-codes.js";
+import { codeForStatus, ERROR_MESSAGES } from "../constants/error-messages.js";
+import { apiError, asRecord, type ApiError, type ErrorDetail } from "../utils/api-error.util.js";
 
-type ErrorDetail = { field: string; messages: string[] };
-type ErrorResponse = {
-  statusCode: number;
-  code: ErrorCode;
-  message: string;
-  details?: unknown;
-};
-type UnknownRecord = Record<string, unknown>;
-type HttpResponse = { status(code: number): HttpResponse; json(body: ErrorResponse): void };
-type HttpRequest = { method: string; url: string };
+/** Ánh xạ mã Prisma/SQLSTATE đã biết, tuyệt đối không lấy exception.message hay SQL làm câu hiển thị */
+export function databaseError(exception: unknown): ApiError | undefined {
+  const error = asRecord(exception);
+  if (!error) return undefined;
+  const meta = asRecord(error.meta);
+  const adapter = asRecord(meta?.driverAdapterError);
+  const cause = asRecord(adapter?.cause) ?? asRecord(asRecord(error.cause)?.cause) ?? asRecord(error.cause);
+  const sqlState = meta?.code ?? cause?.originalCode ?? error.code;
+  const code = error.code;
+  if (code === "P2002" || sqlState === "23505") {
+    const constraint = asRecord(cause?.constraint);
+    const target = JSON.stringify(meta?.target ?? constraint?.fields ?? constraint?.index ?? "").toLowerCase();
+    const uniqueCode = /username/.test(target) ? ERROR_CODES.USERNAME_TAKEN
+      : /units.*code|unit.*code/.test(target) || (meta?.modelName === "Unit" && /code/.test(target))
+        ? ERROR_CODES.UNIT_CODE_TAKEN : ERROR_CODES.CONFLICT;
+    return apiError(409, uniqueCode);
+  }
+  if (code === "P2025") return apiError(404, ERROR_CODES.NOT_FOUND);
+  if (code === "P2003" || sqlState === "23503") return apiError(409, ERROR_CODES.REFERENCE_IN_USE);
+  if (code === "P2034" || sqlState === "40001" || sqlState === "40P01") return apiError(409, ERROR_CODES.CONFLICT);
+  if (["23514", "23502", "P0001"].includes(String(sqlState)) || code === "P2004" || code === "P2011") {
+    return apiError(422, ERROR_CODES.DB_RULE_VIOLATION);
+  }
+  if (["P1000", "P1001", "P1002", "P1008", "P1017", "P2024", "ECONNREFUSED"].includes(String(code))
+    || String(sqlState).startsWith("08") || sqlState === "57P01") {
+    return apiError(503, ERROR_CODES.DATABASE_UNAVAILABLE);
+  }
+  // SQL sai hoặc mã Prisma chưa biết là lỗi nội bộ, không biến thành lỗi dữ liệu của người dùng
+  if (/^P\d{4}$/.test(String(code)) || adapter || error.name === "PrismaClientValidationError") {
+    return apiError(500, ERROR_CODES.INTERNAL_ERROR);
+  }
+  return undefined;
+}
 
-/** Chuẩn hóa mọi ngoại lệ thành một định dạng phản hồi API thống nhất */
+/** Lọc details do ứng dụng tạo, bỏ trường lạ và câu mặc định tiếng Anh mà không phản chiếu giá trị nhập */
+function safeDetails(value: unknown): ErrorDetail[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const detail = asRecord(item);
+    if (typeof detail?.field !== "string" || !/^[\w.]+$/.test(detail.field)) return [];
+    const messages = Array.isArray(detail.messages) ? detail.messages.filter((message): message is string =>
+      typeof message === "string" && /[À-ỹĐđ]/u.test(message)) : [];
+    return [{ field: detail.field, messages: messages.length ? messages : [ERROR_MESSAGES.VALIDATION_ERROR] }];
+  });
+}
+
+/** Chuẩn hóa lỗi HTTP và DB thành câu tiếng Việt; log chỉ mã và requestId để lỗi nội bộ không làm lộ secret */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
+  /** Đọc ngoại lệ một lần, bảo toàn HTTP có ý nghĩa và luôn trả details kể cả lỗi framework không có DTO */
   catch(exception: unknown, host: ArgumentsHost): void {
     const context = host.switchToHttp();
-    const response = context.getResponse<HttpResponse>();
-    const request = context.getRequest<HttpRequest>();
-    const prismaError = this.getPrismaError(exception);
-
-    if (prismaError) {
-      response.status(prismaError.statusCode).json(prismaError);
-      return;
+    let body = databaseError(exception);
+    // Express có lỗi parser mang type/status nhưng không kế thừa HttpException, chỉ nhận các type đã biết để giữ status an toàn
+    const parser = asRecord(exception);
+    const parserStatuses: Record<string, number> = { "entity.too.large": 413, "entity.parse.failed": 400,
+      "encoding.unsupported": 415, "charset.unsupported": 415, "request.aborted": 400, "request.size.invalid": 400 };
+    const parserStatus = typeof parser?.type === "string" ? parserStatuses[parser.type] : undefined;
+    if (!body && parserStatus) body = apiError(parserStatus, codeForStatus(parserStatus));
+    // Busboy có nhánh lỗi multipart không mang status, nhận đúng câu cố định của thư viện nhưng không trả câu đó ra client
+    if (!body && ["Unexpected end of form", "Unexpected end of file", "Multipart: Boundary not found"].includes(String(parser?.message))) {
+      body = apiError(400, ERROR_CODES.VALIDATION_ERROR);
     }
-
-    if (exception instanceof HttpException) {
-      const statusCode = exception.getStatus();
-      const payload = exception.getResponse();
-      const errorBody = this.asRecord(payload);
-      const validationDetails = statusCode === HttpStatus.BAD_REQUEST
-        ? this.getValidationDetails(errorBody?.message)
-        : undefined;
-      const message = validationDetails
-        ? "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đã nhập"
-        : this.getHttpMessage(statusCode, errorBody?.message);
-      const body: ErrorResponse = {
-        statusCode,
-        code: this.getHttpCode(statusCode, errorBody?.code),
-        message,
-        ...(validationDetails ? { details: validationDetails } : errorBody?.details !== undefined ? { details: errorBody.details } : {}),
-      };
-      response.status(statusCode).json(body);
-      return;
+    if (!body && exception instanceof HttpException) {
+      const status = exception.getStatus();
+      const payload = asRecord(exception.getResponse());
+      const custom = payload?.code;
+      const knownCode = typeof custom === "string" && Object.hasOwn(ERROR_MESSAGES, custom);
+      const code = knownCode ? custom : codeForStatus(status);
+      // Chỉ nhận lỗi trường theo mã nội bộ đã công bố, bỏ details của lỗi framework/provider dù câu thô có dấu tiếng Việt
+      body = apiError(status, code, status < 500 && knownCode ? safeDetails(payload?.details) : []);
     }
-
-    const error = exception instanceof Error ? exception : new Error(String(exception));
-    this.logger.error(`Unhandled exception for ${request.method} ${request.url}`, error.stack);
-    response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      code: ERROR_CODES.INTERNAL_ERROR,
-      message: "Lỗi hệ thống nội bộ",
-    } satisfies ErrorResponse);
-  }
-
-  private getPrismaError(exception: unknown): ErrorResponse | undefined {
-    const error = this.asRecord(exception);
-    if (!error || typeof error.code !== "string") return undefined;
-
-    if (error.code === "P2002") {
-      const target = this.getUniqueTarget(error.meta);
-      const modelName = this.asRecord(error.meta)?.modelName;
-      const code = target.includes("username")
-        ? ERROR_CODES.USERNAME_TAKEN
-        : target.includes("unitcode") || (target === "code" && modelName === "Unit")
-          ? ERROR_CODES.UNIT_CODE_TAKEN
-          : ERROR_CODES.CONFLICT;
-      const messages: Record<string, string> = {
-        [ERROR_CODES.USERNAME_TAKEN]: "Tên đăng nhập đã được sử dụng",
-        [ERROR_CODES.UNIT_CODE_TAKEN]: "Mã đơn vị đã được sử dụng",
-        [ERROR_CODES.CONFLICT]: "Dữ liệu bị trùng",
-      };
-      return { statusCode: HttpStatus.CONFLICT, code, message: messages[code] };
+    body ??= apiError(500, ERROR_CODES.INTERNAL_ERROR);
+    if (body.statusCode >= 500) {
+      this.logger.error(JSON.stringify({ message: "Xử lý yêu cầu thất bại", code: body.code,
+        requestId: context.getRequest<{ requestId?: string }>().requestId }));
     }
-
-    if (error.code === "P2025") {
-      return { statusCode: HttpStatus.NOT_FOUND, code: ERROR_CODES.NOT_FOUND, message: "Không tìm thấy dữ liệu" };
-    }
-
-    if (error.code === "P2003") {
-      return { statusCode: HttpStatus.CONFLICT, code: ERROR_CODES.REFERENCE_IN_USE, message: "Không thể thực hiện vì dữ liệu đang được tham chiếu" };
-    }
-
-    if (error.code === "P2010") {
-      const meta = this.asRecord(error.meta);
-      const databaseCode = typeof meta?.code === "string" ? meta.code : "";
-      const message = this.extractDatabaseMessage(meta?.message) ?? "Quy tắc dữ liệu không cho phép thao tác này";
-      const statusCode = databaseCode.startsWith("23") ? HttpStatus.CONFLICT : HttpStatus.UNPROCESSABLE_ENTITY;
-      return { statusCode, code: ERROR_CODES.DB_RULE_VIOLATION, message };
-    }
-
-    return undefined;
-  }
-
-  private getValidationDetails(value: unknown): ErrorDetail[] | undefined {
-    if (!Array.isArray(value) || value.length === 0 || !value.every((item) => typeof item === "string")) {
-      return undefined;
-    }
-
-    const details = new Map<string, string[]>();
-    for (const item of value) {
-      const match = item.match(/^([\w.]+):\s*(.+)$/);
-      const field = match?.[1] ?? "request";
-      const message = match?.[2] ?? item;
-      const messages = details.get(field) ?? [];
-      messages.push(message);
-      details.set(field, messages);
-    }
-    return [...details].map(([field, messages]) => ({ field, messages }));
-  }
-
-  private getHttpMessage(statusCode: number, value: unknown): string {
-    const message = typeof value === "string"
-      ? value
-      : Array.isArray(value) && value.every((item) => typeof item === "string")
-        ? value.join("; ")
-        : undefined;
-    if (message) return message;
-
-    const defaults: Record<number, string> = {
-      [HttpStatus.BAD_REQUEST]: "Yêu cầu không hợp lệ",
-      [HttpStatus.UNAUTHORIZED]: "Bạn cần đăng nhập để thực hiện thao tác này",
-      [HttpStatus.FORBIDDEN]: "Bạn không có quyền thực hiện thao tác này",
-      [HttpStatus.NOT_FOUND]: "Không tìm thấy dữ liệu",
-      [HttpStatus.CONFLICT]: "Dữ liệu bị xung đột",
-      [HttpStatus.UNPROCESSABLE_ENTITY]: "Dữ liệu không thể xử lý",
-    };
-    return defaults[statusCode] ?? "Đã xảy ra lỗi khi xử lý yêu cầu";
-  }
-
-  private getHttpCode(statusCode: number, customCode: unknown): ErrorCode {
-    if (typeof customCode === "string") return customCode;
-    const codes: Record<number, ErrorCode> = {
-      [HttpStatus.BAD_REQUEST]: ERROR_CODES.VALIDATION_ERROR,
-      [HttpStatus.UNAUTHORIZED]: ERROR_CODES.UNAUTHORIZED,
-      [HttpStatus.FORBIDDEN]: ERROR_CODES.FORBIDDEN,
-      [HttpStatus.NOT_FOUND]: ERROR_CODES.NOT_FOUND,
-      [HttpStatus.CONFLICT]: ERROR_CODES.CONFLICT,
-      [HttpStatus.UNPROCESSABLE_ENTITY]: ERROR_CODES.BUSINESS_RULE_VIOLATION,
-    };
-    return codes[statusCode] ?? ERROR_CODES.INTERNAL_ERROR;
-  }
-
-  private getUniqueTarget(meta: unknown): string {
-    const target = this.asRecord(meta)?.target;
-    return (Array.isArray(target) ? target.join(" ") : typeof target === "string" ? target : "").toLowerCase().replace(/[_\s]/g, "");
-  }
-
-  private extractDatabaseMessage(value: unknown): string | undefined {
-    if (typeof value !== "string") return undefined;
-    const match = value.match(/(?:ERROR:\s*)?((?:[\w]+:\s*)?[^\n]+?)(?:\s+at\s+PL\/pgSQL|\n|$)/i);
-    const message = match?.[1]?.trim();
-    return message && !/^PL\/pgSQL/i.test(message) ? message : undefined;
-  }
-
-  private asRecord(value: unknown): UnknownRecord | undefined {
-    return typeof value === "object" && value !== null ? value as UnknownRecord : undefined;
+    context.getResponse<{ status(code: number): { json(body: ApiError): void } }>().status(body.statusCode).json(body);
   }
 }

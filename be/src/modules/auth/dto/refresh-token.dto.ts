@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsNotEmpty, IsString } from "class-validator";
 
+/** Nhận token opaque của phiên hiện tại, service băm SHA-256 trước khi tra cứu hoặc thu hồi */
 export class RefreshTokenDto {
   @ApiProperty({
     type: String,

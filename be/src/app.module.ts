@@ -8,7 +8,7 @@ import { EvaluationPeriodsModule } from './modules/evaluation-periods/evaluation
 import { CriteriaModule } from './modules/criteria/criteria.module.js';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module.js';
 import { PrismaModule } from "./prisma/prisma.module.js";
-import { envValidationSchema } from "./config/env.validation.js";
+import { validateEnvironment } from "./config/env.validation.js";
 import { HealthController } from "./health/health.controller.js";
 import { HttpLoggingMiddleware } from "./common/middleware/http-logging.middleware.js";
 import { CommonModule } from "./common/common.module.js";
@@ -21,13 +21,7 @@ import { CommonModule } from "./common/common.module.js";
         path.resolve(process.cwd(), '.env'),
         path.resolve(process.cwd(), 'be/.env'),
       ],
-      validationSchema: envValidationSchema,
-      validationOptions: {
-        libraryOptions: {
-          allowUnknown: true,
-          abortEarly: false,
-        },
-      },
+      validate: validateEnvironment,
     }),
     PrismaModule,
     CommonModule,

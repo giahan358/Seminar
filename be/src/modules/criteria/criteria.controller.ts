@@ -1,6 +1,8 @@
+import { createApiValidationPipe } from "../../common/pipes/api-validation.pipe.js";
 import {
   Body,
   Controller,
+  Inject,
   Delete,
   Get,
   Param,
@@ -27,7 +29,8 @@ import { CriteriaService } from "./criteria.service.js";
 @Controller("api/v1/criteria")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CriteriaController {
-  constructor(private readonly criteriaService: CriteriaService) {}
+  /** Inject dependency tường minh theo mẫu Auth để cùng luồng DB hoạt động trên tsx và bản build ESM */
+  constructor(@Inject(CriteriaService) private readonly criteriaService: CriteriaService) {}
 
   @Get()
   @Roles("ADMIN", "UNIT")
@@ -50,7 +53,8 @@ export class CriteriaController {
   @Roles("ADMIN")
   @ApiOperation({ summary: "Create a criterion" })
   @ApiResponse({ status: 201, description: "Criterion created" })
-  create(@Body() dto: CreateCriterionDto) {
+  /** Validate DTO tạo mới và từ chối field ngoài giao ước trước khi chuyển dữ liệu tới service thực hiện quyền ghi */
+  create(@Body(createApiValidationPipe(CreateCriterionDto)) dto: CreateCriterionDto) {
     return this.criteriaService.create(dto);
   }
 
@@ -59,9 +63,10 @@ export class CriteriaController {
   @ApiOperation({ summary: "Update a criterion" })
   @ApiResponse({ status: 200, description: "Criterion updated" })
   @ApiResponse({ status: 404, description: "Criterion not found" })
+  /** Validate DTO cập nhật cùng mã tài nguyên đã qua pipe, chỉ giao phần dữ liệu hợp lệ cho service kiểm nghiệp vụ */
   update(
     @Param("id", ParseUUIDPipe) id: string,
-    @Body() dto: UpdateCriterionDto,
+    @Body(createApiValidationPipe(UpdateCriterionDto)) dto: UpdateCriterionDto,
   ) {
     return this.criteriaService.update(id, dto);
   }

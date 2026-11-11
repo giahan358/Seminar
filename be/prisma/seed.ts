@@ -8,12 +8,12 @@ import { PrismaClient } from "../src/generated/prisma/client.js";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error("DATABASE_URL must be set before running the seed.");
+  throw new Error("Cần cấu hình DATABASE_URL trước khi chạy dữ liệu khởi tạo.");
 }
 
 const adminPassword = process.env.SEED_ADMIN_PASSWORD;
 if (!adminPassword) {
-  throw new Error("SEED_ADMIN_PASSWORD must be set before creating the seed admin.");
+  throw new Error("Cần cấu hình SEED_ADMIN_PASSWORD trước khi tạo quản trị viên khởi tạo.");
 }
 const seedAdminPassword: string = adminPassword;
 
@@ -115,6 +115,7 @@ function statusChain(status: EvaluationStatus): EvaluationStatus[] {
   }
 }
 
+/** Khởi tạo fixture trên DB do người vận hành chỉ định, giữ tài khoản đã có nếu không yêu cầu đổi và lưu credential riêng trước bàn giao */
 async function main(): Promise<void> {
   const generatedCredentials: { username: string; password: string }[] = [];
   const existingUsers = await prisma.user.findMany({
@@ -123,9 +124,10 @@ async function main(): Promise<void> {
   });
   const existingUsernames = new Set(existingUsers.map((user) => user.username));
 
+  // Kiểm nơi lưu credential trước transaction để không tạo tài khoản mà người vận hành không thể lấy mật khẩu
   if ((!credentialsFile && (rotatePasswords || existingUsernames.size < units.length + 1))) {
     throw new Error(
-      "SEED_CREDENTIALS_FILE must point to a secure local file before creating or rotating account passwords.",
+      "Cần cấu hình SEED_CREDENTIALS_FILE tới tệp an toàn trước khi tạo hoặc đổi mật khẩu tài khoản khởi tạo.",
     );
   }
 
@@ -226,6 +228,13 @@ async function main(): Promise<void> {
 
       const criteria = await tx.criterion.findMany({ where: { periodId: period.id }, orderBy: { sortOrder: "asc" } });
       const evaluationCount = periodSeed.year === 2026 ? unitUsers.length : 8;
+      // Dựng fixture lịch sử trong cửa sổ hợp lệ của transaction, giữ trigger hoạt động để mọi điểm/minh chứng vẫn được kiểm
+      // Lịch gốc được khôi phục sau khi dựng xong cùng transaction nên client không thấy giai đoạn tạm này
+      // Nếu có lỗi, transaction rollback cả lịch tạm và fixture, không để kỳ lịch sử bị mở cho người dùng
+      await tx.evaluationPeriod.update({ where: { id: period.id }, data: {
+        publishedAt: new Date(now.getTime() - 60_000), selfEvalStart: new Date(now.getTime() - 60_000),
+        selfEvalDeadline: new Date(now.getTime() + 3_600_000),
+      } });
       for (let index = 0; index < evaluationCount; index += 1) {
         const unitUser = unitUsers[index];
         const status = statusFor(index, periodSeed.year);
@@ -313,6 +322,10 @@ async function main(): Promise<void> {
           });
         }
       }
+      // Trả lại lịch đã chốt cho kỳ mẫu sau khi mọi hồ sơ đã có trạng thái đích, không nới hạn ngoài transaction seed
+      await tx.evaluationPeriod.update({ where: { id: period.id }, data: {
+        publishedAt: periodSeed.publishedAt, selfEvalStart: periodSeed.selfEvalStart, selfEvalDeadline: periodSeed.selfEvalDeadline,
+      } });
     }
 
     const tokenUsers = [admin.id, ...unitUsers.slice(0, 6).map((user) => user.userId)];
@@ -330,21 +343,29 @@ async function main(): Promise<void> {
     }
   }, { maxWait: 10_000, timeout: 120_000 });
 
+  // Chỉ ghi credential mới ra tệp quyền hạn chế, log không chứa mật khẩu hoặc đường dẫn tùy ý từ môi trường
   if (generatedCredentials.length > 0) {
-    if (!credentialsFile) throw new Error("SEED_CREDENTIALS_FILE is required to save newly generated credentials.");
+    if (!credentialsFile) throw new Error("Cần cấu hình SEED_CREDENTIALS_FILE để lưu thông tin tài khoản vừa tạo.");
     const filePath = resolve(credentialsFile);
     await writeFile(filePath, `${JSON.stringify(generatedCredentials, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
-    console.info(`Credentials written to ${filePath}. Store them securely and delete the file after use.`);
+    console.info(`Đã ghi thông tin tài khoản vào tệp cấu hình. Hãy bảo quản an toàn và xóa tệp sau khi sử dụng.`);
   }
-  console.info(`Seeded ${units.length} units, ${unitUsersCount()} unit accounts, 2 periods, evaluations and all schema tables.`);
+  console.info(`Đã khởi tạo ${units.length} đơn vị, ${unitUsersCount()} tài khoản đơn vị, 2 kỳ cùng dữ liệu hồ sơ mẫu.`);
 }
 
 function unitUsersCount(): number {
   return units.length;
 }
 
+// Chặn lỗi DB/filesystem thô ở biên script, giữ mã thoát thất bại để CI không coi seed lỗi là thành công
 try {
   await main();
+} catch {
+  console.error("Không thể khởi tạo dữ liệu. Vui lòng kiểm tra cấu hình, quyền ghi tệp và kết nối cơ sở dữ liệu.");
+  process.exitCode = 1;
 } finally {
-  await prisma.$disconnect();
+  await prisma.$disconnect().catch(() => {
+    console.error("Không thể đóng kết nối cơ sở dữ liệu sau khi khởi tạo.");
+    process.exitCode = 1;
+  });
 }

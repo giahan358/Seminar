@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "../../generated/prisma/client.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import type { CreateAuditLogDto } from "./dto/create-audit-log.dto.js";
@@ -8,7 +8,8 @@ import { AuditService } from "../../common/services/audit.service.js";
 
 @Injectable()
 export class AuditLogsService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  /** Inject dependency tường minh theo mẫu Auth để cùng luồng DB hoạt động trên tsx và bản build ESM */
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService, @Inject(AuditService) private readonly audit: AuditService) {}
 
   async findAll(query: QueryAuditLogDto) {
     const page = Math.max(1, Number(query.page) || 1);

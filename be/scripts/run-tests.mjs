@@ -5,7 +5,7 @@ import { error } from "node:console";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-/** Tìm đệ quy các tệp khớp thư mục gốc và hậu tố đã cấu hình */
+/** Duyệt thư mục gốc và thư mục con để trả các tệp đúng hậu tố, lỗi filesystem được lớp gọi chuyển sang câu an toàn */
 function findTestFiles(directory, suffix) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = join(directory, entry.name);
@@ -14,7 +14,7 @@ function findTestFiles(directory, suffix) {
   });
 }
 
-/** Chạy Node test runner qua tsx với danh sách tệp tìm được */
+/** Chạy các tệp đã tìm qua tsx theo thứ tự, truyền nguyên tùy chọn coverage và giữ mã thoát thực của tiến trình kiểm thử */
 function runTests() {
   const [root, suffix, ...options] = process.argv.slice(2);
   if (!root || !suffix) {
@@ -38,7 +38,13 @@ function runTests() {
   const result = spawnSync(process.execPath, [tsxCli, ...runnerOptions, ...files], {
     stdio: "inherit",
   });
+  if (result.error) error("Không thể khởi chạy tiến trình kiểm thử. Vui lòng kiểm tra Node và dependency.");
   process.exitCode = result.status ?? 1;
 }
 
-runTests();
+// Giữ thông báo chủ động bằng tiếng Việt khi thư mục hoặc runtime không khả dụng, không in lỗi hệ thống thô
+try { runTests(); }
+catch {
+  error("Không thể chuẩn bị bộ kiểm thử. Vui lòng kiểm tra thư mục và cấu hình runtime.");
+  process.exitCode = 1;
+}

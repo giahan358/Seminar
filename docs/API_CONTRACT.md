@@ -52,13 +52,23 @@ Tất cả lỗi API dùng cấu trúc thống nhất:
   "details": [
     {
       "field": "selfScore",
-      "message": "Điểm phải nằm trong khoảng cho phép."
+      "messages": ["Điểm phải nằm trong khoảng cho phép."]
     }
   ]
 }
 ```
 
-`details` có thể là mảng rỗng. FE dựa vào `code`/`field`, không dựa vào nội dung câu tiếng Việt để điều khiển logic.
+Luôn có đủ `statusCode`, `code`, `message`, `details`; `details` là mảng rỗng khi không có lỗi trường. Mỗi phần tử có `field: string` và `messages: string[]`; đường dẫn lồng nhau dùng dấu chấm, ví dụ `thresholds.0.minPercent` (mảng body gốc dùng `0.minPercent`). FE dựa vào `code`/`field`, không dựa vào nội dung câu tiếng Việt để điều khiển logic.
+
+Field ngoài DTO bị từ chối với `400 VALIDATION_ERROR`. JSON hỏng, pipe UUID/số/enum, multipart sai và route không tồn tại đều trả câu tiếng Việt an toàn. Không phản chiếu giá trị nhập, URL, tên bảng/cột, SQL, stack hoặc phản hồi provider. Lỗi unique trả 409; bản ghi không còn tồn tại trả 404; CHECK/trigger đã nhận diện trả 422 `DB_RULE_VIOLATION`; lỗi DB chưa nhận diện trả 500, mất kết nối trả 503 `DATABASE_UNAVAILABLE`.
+
+Câu chính thức theo mã nằm ở [danh mục lỗi](../be/src/common/constants/error-messages.ts). Filter dùng danh mục này thay cho thông điệp thô; chỉ nhận `details` từ payload có mã nội bộ đã công bố. Các lỗi trường từ DTO giữ câu cụ thể bằng tiếng Việt. Thêm mã nghiệp vụ mới phải cập nhật contract và danh mục trước khi dùng.
+
+Swagger tại `/api/docs-json` mô tả đủ bốn trường và các lỗi framework cho mọi operation. Chỉ xuất tệp OpenAPI khi cấu hình `OPENAPI_OUTPUT_FILE`; mặc định không tự ghi đè tài liệu đang chỉnh sửa.
+
+### Kiểu dữ liệu phản hồi
+
+Ngày giờ trả ISO 8601 UTC có hậu tố `Z`. Điểm Prisma Decimal trả JSON number, làm tròn hai chữ số bằng ROUND_HALF_UP. BigInt trong khoảng số nguyên an toàn của JavaScript trả number; ngoài khoảng đó trả chuỗi số thập phân để không mất chính xác. Không thay đổi chuỗi văn bản chỉ vì có dạng số.
 
 | HTTP | Dùng khi |
 |---|---|
@@ -67,8 +77,12 @@ Tất cả lỗi API dùng cấu trúc thống nhất:
 | `403` | Đã đăng nhập nhưng không có quyền. |
 | `404` | Không tìm thấy tài nguyên hoặc tài nguyên ngoài phạm vi được phép xem. |
 | `409` | Trùng dữ liệu hoặc xung đột trạng thái hiện tại. |
+| `405` | Phương thức HTTP không được hỗ trợ nếu adapter phân biệt với 404. |
+| `413` | Body hoặc tệp vượt dung lượng cho phép. |
+| `415` | Kiểu nội dung không được hỗ trợ. |
 | `422` | Request đúng cấu trúc nhưng vi phạm điều kiện nghiệp vụ. |
 | `500` | Lỗi không dự kiến; không trả stack trace/secret. |
+| `503` | Dịch vụ hoặc cơ sở dữ liệu tạm thời không khả dụng. |
 
 ## 2. Xác thực, tài khoản và đơn vị
 
@@ -171,9 +185,19 @@ Request:
 }
 ```
 
-Backend xác minh mật khẩu hiện tại, áp chính sách độ dài/độ mạnh đã thống nhất, đặt `mustChangePassword` thành `false` và thu hồi các refresh token cũ của user. Request sai mật khẩu trả `401 INVALID_CREDENTIALS`; mật khẩu mới không đạt chính sách trả `400 VALIDATION_ERROR`. Thành công trả hồ sơ user an toàn theo shape `/auth/me`; client cần đăng nhập lại nếu session hiện tại bị thu hồi.
+Backend xác minh mật khẩu hiện tại; sai mật khẩu trả `400 VALIDATION_ERROR`, `details.field=currentPassword`, thông báo “Mật khẩu hiện tại không chính xác.”
+Mật khẩu mới tối thiểu 10 ký tự, có chữ và số, tối đa 72 byte UTF-8, khác username (không phân biệt hoa thường), khác mật khẩu cũ khi so bcrypt và không thuộc danh sách phổ biến của policy
+Thành công cập nhật hash/cờ/version, thu hồi mọi refresh cũ và trả cặp token mới theo response login, tất cả trong cùng transaction; FE lưu thay cặp token cũ
 
-> **Trạng thái triển khai:** `POST /auth/login` và `GET /auth/me` đã được triển khai bước đầu, gồm Bearer-token guard và kiểm tra role dùng được cho các module khác. `POST /auth/refresh`, `POST /auth/logout` và `POST /auth/change-password` vẫn là contract cho các bước tiếp theo, chưa được coi là đã triển khai cho đến khi endpoint tương ứng được hoàn tất và kiểm thử.
+Quy tắc VC02 áp dụng cho cả năm endpoint:
+- Login username 3–64 ký tự sau trim, password 1–128 ký tự; tài khoản/đơn vị khóa dùng chung `401 INVALID_CREDENTIALS`
+- Access mặc định 900 giây, refresh 604800 giây qua `JWT_ACCESS_TTL`/`JWT_REFRESH_TTL`; refresh ngẫu nhiên 48 byte, DB chỉ lưu SHA-256
+- JWT chỉ HS256, kiểm issuer/audience/tokenUse/sub UUID/exp và claim `ver` bằng `User.credentialVersion`; token cũ thiếu version buộc đăng nhập lại sau rollout
+- Refresh xoay trong transaction có khóa user; tái dùng token đã thu hồi sẽ thu hồi mọi refresh của user và commit trước khi trả `401 INVALID_REFRESH_TOKEN`, kể cả request cạnh tranh
+- Tài khoản còn cờ chỉ dùng access cho me/change-password; logout xác minh bằng chính refresh token được gửi, idempotent; refresh bị từ chối `403 PASSWORD_CHANGE_REQUIRED`
+- Guard JWT lấy DB rồi kiểm cờ đổi mật khẩu ngay trong cùng guard trước RolesGuard; whitelist dùng metadata chỉ trên me/change-password, không dựa vào URL do client gửi
+- Me trả thêm `unit: {id, code, name, unitType} | null`, không trả version/hash
+- Audit LOGIN_SUCCESS/LOGIN_FAILED/PASSWORD_CHANGED chỉ ghi định danh và IP từ request server, không tin X-Forwarded-For khi chưa cấu hình proxy tin cậy
 
 ### Các API tài khoản/đơn vị
 
@@ -467,6 +491,12 @@ Mọi chuyển trạng thái phải cập nhật hồ sơ, `statusHistories` và
 
 ## 6. Phản hồi, lịch sử, thông báo và audit
 
+Zalo ZNS là tích hợp tùy chọn có phí, mặc định `ZALO_ZNS_ENABLED=false`; phạm vi đồ án chỉ chuẩn bị cấu hình và điểm mở rộng, không yêu cầu demo gửi thật hoặc tài khoản trả phí
+Chỉ kích hoạt sau khi doanh nghiệp yêu cầu và cung cấp tài khoản/OA/quyền/token/template hợp lệ cùng môi trường/người nhận được chỉ định
+Khi tắt, không gọi API Zalo, không tạo công việc gửi/retry ZNS, không yêu cầu secret; UI/báo cáo ghi “Chưa kích hoạt” hoặc “Đã tắt theo cấu hình”, không báo SENT hoặc lỗi gửi
+Các kết quả tổng hợp như `allRequiredChannelsSent` chỉ tính kênh đang bật và được yêu cầu, không dùng ZNS chưa kích hoạt để chặn nghiệm thu Email/Push
+
+
 - `POST /evaluations/:evaluationId/feedback` request:
 
   ```json
@@ -546,3 +576,20 @@ Biên bản thẩm định một đơn vị:
 ```
 
 Format hợp lệ: tổng hợp 34 đơn vị → `XLSX`; biên bản từng đơn vị → `PDF` hoặc `DOCX`. Evaluation phải thuộc `periodId` được gửi. `GET /admin/reports/exports` trả danh sách phân trang; `GET /admin/reports/exports/:exportId/download` xác minh ADMIN và trả redirect/file hoặc signed URL có thời hạn, không lộ storage path.
+
+
+## VC03 — Giao ước lưu trữ bổ sung
+
+Không thêm endpoint hoặc đổi response ở VC03, các bảng mới là nền tảng cho VC05–VC12
+
+- ImportSession thuộc admin, rows JSON chuẩn hóa không chứa mật khẩu, digest SHA-256, unique admin/idempotencyKey, trạng thái PREVIEW/CONFIRMED/EXPIRED, result và confirmedAt chỉ có sau xác nhận
+- OnboardingToken chỉ purpose PUSH_REGISTRATION, hash SHA-256 unique, user/version, expiresAt bắt buộc, usedAt nullable cho token chưa dùng
+- CredentialDispatch unique user/version, ciphertext/nonce/tag/keyId AES-256-GCM bắt buộc, không lưu mật khẩu thô, hết hạn hoặc đã hủy thì không gửi
+- CredentialDelivery chỉ WEB_PUSH/EMAIL/ZALO_ZNS, trạng thái PENDING/SENT/FAILED/SKIPPED, unique dispatch/channel, attemptCount không âm, reasonCode phân biệt NO_SUBSCRIPTION
+- Lease gồm claimedAt/leaseUntil/claimToken cùng null hoặc cùng có giá trị và leaseUntil lớn hơn claimedAt, áp dụng cả NotificationDelivery và ZaloConnection
+- Giữ dữ liệu TELEGRAM cũ, nghiệp vụ mới chỉ dùng ba kênh chính thức, ZNS vẫn mặc định tắt
+- ZaloConnection unique oaId, token mã hóa, tokenVersion không âm, expiresAt bắt buộc, không yêu cầu secret để tạo schema
+- CriterionScore.supplementedAt nullable, chỉ ghi khi có thay đổi tự chấm/minh chứng thực trong vòng bổ sung, không backfill từ updatedAt
+- Timestamp giữ UTC, FK NoAction, TTL phải kiểm trong service/worker, không tự xóa dữ liệu khi hết hạn
+- Trigger dùng SQLSTATE 23514 và CONSTRAINT làm rule identifier ổn định, response vẫn DB_RULE_VIOLATION tiếng Việt, không trả raw driver
+- DRAFT chỉ được sửa trong [selfEvalStart,selfEvalDeadline) của kỳ đã publish, bổ sung chỉ trước supplementDeadline, đúng deadline bị khóa kể cả job trễ

@@ -1,3 +1,4 @@
+import { createApiValidationPipe } from "../../common/pipes/api-validation.pipe.js";
 import {
   Body,
   Controller,
@@ -32,6 +33,7 @@ import { UnitsService } from "./units.service.js";
 @Controller("api/v1/units")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UnitsController {
+  /** Inject dependency tường minh theo mẫu Auth để cùng luồng DB hoạt động trên tsx và bản build ESM */
   constructor(
     @Inject(UnitsService)
     private readonly unitsService: UnitsService,
@@ -63,7 +65,8 @@ export class UnitsController {
   @Roles("ADMIN")
   @ApiOperation({ summary: "[ADMIN] Tạo đơn vị" })
   @ApiBody({ type: CreateUnitDto })
-  create(@Body() dto: CreateUnitDto) {
+  /** Validate DTO tạo mới và từ chối field ngoài giao ước trước khi chuyển dữ liệu tới service thực hiện quyền ghi */
+  create(@Body(createApiValidationPipe(CreateUnitDto)) dto: CreateUnitDto) {
     return this.unitsService.create(dto);
   }
 
@@ -95,9 +98,10 @@ export class UnitsController {
   @ApiParam({ name: "id", format: "uuid", description: "UUID của đơn vị, lấy từ GET /units (trường id)", example: "00000000-0000-4000-8000-000000000101" })
   @ApiOperation({ summary: "[ADMIN] Cập nhật đơn vị" })
   @ApiBody({ type: UpdateUnitDto })
+  /** Validate DTO cập nhật cùng mã tài nguyên đã qua pipe, chỉ giao phần dữ liệu hợp lệ cho service kiểm nghiệp vụ */
   update(
     @Param("id", ParseUUIDPipe) id: string,
-    @Body() dto: UpdateUnitDto,
+    @Body(createApiValidationPipe(UpdateUnitDto)) dto: UpdateUnitDto,
   ) {
     return this.unitsService.update(id, dto);
   }

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { ClockService } from "./clock.service.js";
 import { ERROR_CODES } from "../constants/error-codes.js";
 
@@ -10,7 +10,8 @@ export type SelfEvaluationWindow = {
 
 @Injectable()
 export class DeadlineCalculator {
-  constructor(private readonly clock: ClockService) {}
+  /** Dùng đồng hồ inject được để kiểm mốc mở/đóng mà không phụ thuộc giờ thật khi chạy regression */
+  constructor(@Inject(ClockService) private readonly clock: ClockService) {}
 
   selfEvaluationDeadline(configuredDeadline: Date | null): Date | null {
     return configuredDeadline ? new Date(configuredDeadline) : null;

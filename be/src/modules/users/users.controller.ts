@@ -1,3 +1,4 @@
+import { createApiValidationPipe } from "../../common/pipes/api-validation.pipe.js";
 import {
   Body,
   Controller,
@@ -34,6 +35,7 @@ import { UsersService } from "./users.service.js";
 @Controller("api/v1/users")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
+  /** Inject dependency tường minh theo mẫu Auth để cùng luồng DB hoạt động trên tsx và bản build ESM */
   constructor(
     @Inject(UsersService)
     private readonly usersService: UsersService,
@@ -61,7 +63,8 @@ export class UsersController {
   @Roles("ADMIN")
   @ApiOperation({ summary: "[ADMIN] Tạo tài khoản ADMIN hoặc UNIT (trả mật khẩu tạm một lần)" })
   @ApiBody({ type: CreateUserDto })
-  create(@Body() dto: CreateUserDto) {
+  /** Validate DTO tạo mới và từ chối field ngoài giao ước trước khi chuyển dữ liệu tới service thực hiện quyền ghi */
+  create(@Body(createApiValidationPipe(CreateUserDto)) dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
@@ -81,10 +84,11 @@ export class UsersController {
   @ApiParam({ name: "id", format: "uuid", description: "UUID của TÀI KHOẢN: lấy từ GET /users, ở trường id của từng dòng (không phải unitId)" })
   @ApiOperation({ summary: "[ADMIN, UNIT] Cập nhật thông tin tài khoản (UNIT chỉ sửa chính mình)" })
   @ApiBody({ type: UpdateUserDto })
+  /** Validate DTO cập nhật cùng mã tài nguyên đã qua pipe, chỉ giao phần dữ liệu hợp lệ cho service kiểm nghiệp vụ */
   update(
     @Param("id", ParseUUIDPipe) id: string,
     @GetCurrentUser() currentUser: CurrentUser,
-    @Body() dto: UpdateUserDto,
+    @Body(createApiValidationPipe(UpdateUserDto)) dto: UpdateUserDto,
   ) {
     return this.usersService.update(id, currentUser, dto);
   }
@@ -103,10 +107,11 @@ export class UsersController {
   @ApiParam({ name: "id", format: "uuid", description: "UUID của TÀI KHOẢN: lấy từ GET /users, ở trường id của từng dòng (không phải unitId" })
   @ApiOperation({ summary: "[ADMIN] Khóa hoặc kích hoạt tài khoản" })
   @ApiBody({ type: UpdateUserStatusDto })
+  /** Validate cờ kích hoạt là boolean trước khi service kiểm quyền và cập nhật trạng thái tài khoản */
   updateStatus(
     @Param("id", ParseUUIDPipe) id: string,
     @GetCurrentUser() currentUser: CurrentUser,
-    @Body() dto: UpdateUserStatusDto,
+    @Body(createApiValidationPipe(UpdateUserStatusDto)) dto: UpdateUserStatusDto,
   ) {
     return this.usersService.updateStatus(id, dto.isActive, currentUser);
   }

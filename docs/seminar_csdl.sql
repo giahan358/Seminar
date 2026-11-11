@@ -1,3 +1,5 @@
+-- Bản SQL thiết kế ban đầu, triển khai hiện tại dùng toàn bộ migration theo thứ tự trong be/prisma/migrations
+-- VC03 bổ sung bảng và thay trigger bằng migration 20261112050000_vc03_database_foundation, xem docs/VC03_DATABASE.md
 -- =====================================================================
 -- HỆ THỐNG ĐÁNH GIÁ, XẾP LOẠI THI ĐUA CÔNG TÁC ĐOÀN VÀ PHONG TRÀO THANH NIÊN
 -- Ban Thanh niên CATP - 34 Cơ sở Đoàn trực thuộc - Năm 2026

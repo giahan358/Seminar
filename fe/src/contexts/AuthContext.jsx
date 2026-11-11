@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import {
@@ -11,18 +11,17 @@ import {
 
 const AuthContext = createContext(null);
 
+/** Quản lý phiên thật qua API, phục hồi sau reload và cô lập mỗi effect để StrictMode hủy rồi chạy lại an toàn */
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const restoredRef = useRef(false);
 
   useEffect(() => {
-    if (restoredRef.current) return;
-    restoredRef.current = true;
 
     let cancelled = false;
 
+    /** Đọc me từ server và giữ token hiện tại sau interceptor refresh, không ghi đè bằng access trước lúc chờ */
     async function restore() {
       const accessToken = getAccessToken();
       if (!accessToken) {
@@ -38,11 +37,11 @@ export function AuthProvider({ children }) {
         if (cancelled) return;
         setUser(fresh);
         setSession({
-          accessToken,
+          accessToken: getAccessToken(),
           refreshToken: getRefreshToken(),
           user: fresh,
         });
-      } catch (err) {
+      } catch {
         if (cancelled) return;
         // 401 đã được apiClient xử lý (clear + event)
         // lỗi khác: nếu không có cached thì coi như chưa đăng nhập
@@ -60,6 +59,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    /** Nhận thay đổi phiên từ interceptor để đồng bộ hồ sơ mà không cần reload trang */
+    const onUpdated = (event) => setUser(event.detail);
     const onUnauthorized = () => {
       clearSession();
       setUser(null);
@@ -69,10 +70,14 @@ export function AuthProvider({ children }) {
       });
     };
     window.addEventListener("auth:unauthorized", onUnauthorized);
-    return () => window.removeEventListener("auth:unauthorized", onUnauthorized);
+    window.addEventListener("auth:updated", onUpdated);
+    return () => {
+      window.removeEventListener("auth:unauthorized", onUnauthorized);
+      window.removeEventListener("auth:updated", onUpdated);
+    };
   }, [navigate]);
 
-  // ---------- Login ----------
+  /** Xác thực credential qua BE, chỉ lưu khi cặp token và hồ sơ đầy đủ để không tạo phiên dở dang */
   const login = useCallback(async (username, password) => {
     const result = await authService.login(username, password);
     // contract login: { accessToken, refreshToken, tokenType, expiresIn, user }
@@ -89,13 +94,13 @@ export function AuthProvider({ children }) {
     return nextUser;
   }, []);
 
-  // ---------- Logout ----------
+  /** Thu hồi refresh nếu có, luôn xóa phiên local khi API thất bại và chỉ log câu an toàn không kèm token/password */
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();
     try {
       if (refreshToken) await authService.logout(refreshToken);
-    } catch (e) {
-      console.warn("Logout API failed, clearing local session anyway", e);
+    } catch {
+      console.warn("Không thể thu hồi phiên trên máy chủ. Phiên trên thiết bị đã được xóa.");
     } finally {
       clearSession();
       setUser(null);
@@ -103,34 +108,14 @@ export function AuthProvider({ children }) {
     }
   }, [navigate]);
 
-  // ---------- Change password ----------
-  // contract: thành công trả hồ sơ user an toàn (shape /auth/me)
-  // và thu hồi refresh token cũ → client cần đăng nhập lại nếu session bị thu hồi
-  const changePassword = useCallback(
-    async (currentPassword, newPassword) => {
-      const updatedUser = await authService.changePassword(
-        currentPassword,
-        newPassword
-      );
-
-      // cập nhật user mới + giữ nguyên token hiện tại (nếu backend còn cho dùng)
-      if (updatedUser?.id) {
-        setUser(updatedUser);
-        setSession({
-          accessToken: getAccessToken(),
-          refreshToken: getRefreshToken(),
-          user: updatedUser,
-        });
-      }
-
-      // Nếu backend thu hồi luôn access token hiện tại → phải login lại.
-      // clearSession(); setUser(null);
-      // navigate("/login", { replace: true, state: { message: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại." } });
-
-      return updatedUser;
-    },
-    [navigate]
-  );
+  /** Lưu nguyên cặp token mới sau đổi mật khẩu, BE đã thu hồi version và mọi refresh của phiên cũ */
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    const pair = await authService.changePassword(currentPassword, newPassword);
+    if (!pair?.accessToken || !pair?.refreshToken || !pair?.user) throw new Error("Phản hồi đổi mật khẩu không hợp lệ.");
+    setSession(pair);
+    setUser(pair.user);
+    return pair.user;
+  }, []);
 
   const value = {
     user,
@@ -146,8 +131,9 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/** Lấy trạng thái xác thực trong cây provider, báo lỗi cấu hình giao diện bằng tiếng Việt nếu dùng ngoài phạm vi */
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) throw new Error("useAuth phải được sử dụng bên trong AuthProvider.");
   return ctx;
 };

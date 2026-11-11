@@ -5,10 +5,12 @@ import { PrismaClient } from "../generated/prisma/client.js";
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  /** Giữ generated client và adapter PG, đặt timezone cho từng kết nối để timestamp của DB luôn theo UTC */
   constructor(@Inject(ConfigService) configService: ConfigService) {
     super({
       adapter: new PrismaPg({
         connectionString: configService.getOrThrow<string>("DATABASE_URL"),
+        options: "-c timezone=UTC",
       }),
     });
   }

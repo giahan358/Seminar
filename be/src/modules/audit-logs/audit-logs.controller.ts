@@ -1,5 +1,7 @@
+import { createApiValidationPipe } from "../../common/pipes/api-validation.pipe.js";
 import {
   Controller,
+  Inject,
   Get,
   Param,
   ParseUUIDPipe,
@@ -23,12 +25,14 @@ import { QueryAuditLogDto } from "./dto/query-audit-log.dto.js";
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles("ADMIN")
 export class AuditLogsController {
-  constructor(private readonly auditLogsService: AuditLogsService) {}
+  /** Inject dependency tường minh theo mẫu Auth để cùng luồng DB hoạt động trên tsx và bản build ESM */
+  constructor(@Inject(AuditLogsService) private readonly auditLogsService: AuditLogsService) {}
 
   @Get()
   @ApiOperation({ summary: "List audit log entries" })
   @ApiResponse({ status: 200, description: "Paginated audit logs" })
-  findAll(@Query() query: QueryAuditLogDto) {
+  /** Validate query phân trang và bộ lọc qua DTO tường minh để cả tsx và bản build trả lỗi trường đúng giao ước */
+  findAll(@Query(createApiValidationPipe(QueryAuditLogDto)) query: QueryAuditLogDto) {
     return this.auditLogsService.findAll(query);
   }
 

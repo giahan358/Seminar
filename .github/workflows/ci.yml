@@ -97,6 +97,30 @@ jobs:
       - name: Run backend unit tests
         run: npm run test:unit
 
+      # Tạo DB riêng cho lỗi CHECK/trigger của VC01, không chạy fixture tích hợp vào DB phục vụ smoke API
+      - name: Verify VC01 with isolated PostgreSQL
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/vc01_test
+          VC01_TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/vc01_test
+        run: |
+          PGPASSWORD=ci createdb -h localhost -U ci vc01_test
+          npx prisma migrate deploy
+          node --import tsx --test test/integration/vc01.integration.test.ts
+
+      # Dùng DB mới cho Auth để kiểm transaction cạnh tranh, version và lỗi tiếng Việt mà không can thiệp fixture VC01
+      - name: Kiểm Auth VC02 với PostgreSQL riêng
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/vc02_test
+          VC02_TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/vc02_test
+        run: |
+          PGPASSWORD=ci createdb -h localhost -U ci vc02_test
+          npx prisma migrate deploy
+          node --import tsx --test test/integration/vc02.integration.test.ts
+
+      # Tạo DB UUID riêng để kiểm migration mới/nâng cấp, seed và Auth, không reset fixture của các bước trước
+      - name: Kiểm database VC03 trên PostgreSQL thật
+        run: npm run db:verify:vc03
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=critical
 

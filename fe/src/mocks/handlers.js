@@ -88,7 +88,8 @@ export const handlers = [
     const username = usernameFromAuth(request);
     const record = username && USERS[username];
     if (!record) return unauthorized();
-    return HttpResponse.json(record.user);
+    // Fixture trả cặp mới như contract sau khi thu hồi các refresh cũ, chỉ hỗ trợ kiểm giao diện
+    return HttpResponse.json({ ...issueTokens(username), user: record.user });
   }),
 
   http.post("*/api/v1/auth/refresh", async ({ request }) => {
@@ -115,13 +116,14 @@ export const handlers = [
 
     if (currentPassword !== record.password) {
       return HttpResponse.json(
-        { statusCode: 401, code: "INVALID_CREDENTIALS", message: "Mật khẩu hiện tại không đúng", details: [] },
-        { status: 401 }
+        { statusCode: 400, code: "VALIDATION_ERROR", message: "Dữ liệu gửi lên không hợp lệ.", details: [{ field: "currentPassword", messages: ["Mật khẩu hiện tại không chính xác."] }] },
+        { status: 400 }
       );
     }
-    if (!newPassword || newPassword.length < 6) {
+    if (!newPassword || newPassword.length < 10) {
       return HttpResponse.json(
-        { statusCode: 400, code: "VALIDATION_ERROR", message: "Dữ liệu không hợp lệ", details: [{ field: "newPassword", message: "Mật khẩu tối thiểu 6 ký tự" }] },
+        // Fixture lỗi giữ messages dạng mảng như backend để kiểm giao diện, không dùng để xác nhận policy mật khẩu của BE
+        { statusCode: 400, code: "VALIDATION_ERROR", message: "Dữ liệu không hợp lệ", details: [{ field: "newPassword", messages: ["Mật khẩu tối thiểu 10 ký tự"] }] },
         { status: 400 }
       );
     }
@@ -130,7 +132,8 @@ export const handlers = [
     record.user.mustChangePassword = false;
     for (const [k, v] of REFRESH_STORE) if (v === username) REFRESH_STORE.delete(k);
 
-    return HttpResponse.json(record.user);
+    // Fixture trả cặp mới như contract sau khi thu hồi các refresh cũ, chỉ hỗ trợ kiểm giao diện
+    return HttpResponse.json({ ...issueTokens(username), user: record.user });
   }),
 
   // ---------- DASHBOARD ----------

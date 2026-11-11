@@ -425,6 +425,10 @@ export class UsersService {
     }
   }
 
+  /** Reset credential trong transaction và tăng version để access cũ bị từ chối ngay cả khi ký trong cùng giây
+   * Nhận ID đã được controller kiểm quyền, trả kết quả cấp lại hiện hành và buộc đổi ở lần đăng nhập tiếp theo
+   * Update hàng user lấy khóa trước khi thu hồi refresh, đồng bộ thứ tự khóa của Auth để không cấp lại phiên cũ
+   */
   async resetPassword(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
@@ -444,6 +448,7 @@ export class UsersService {
           passwordHash,
           mustChangePassword: true,
           passwordChangedAt: now,
+          credentialVersion: { increment: 1 },
           updatedAt: now,
         },
       });

@@ -12,8 +12,11 @@ import { JwtAuthGuard, RolesGuard } from "../../common/guards/jwt-auth.guard.js"
     PrismaModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
+      /** Pin thuật toán và nơi phát hành/nhận cho mọi consumer JWT, giá trị env đã được validate khi khởi động */
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>("JWT_SECRET"),
+        signOptions: { algorithm: "HS256", issuer: config.get<string>("JWT_ISSUER", "seminar-api"), audience: config.get<string>("JWT_AUDIENCE", "seminar-web") },
+        verifyOptions: { algorithms: ["HS256"], issuer: config.get<string>("JWT_ISSUER", "seminar-api"), audience: config.get<string>("JWT_AUDIENCE", "seminar-web") },
       }),
     }),
   ],

@@ -1,4 +1,4 @@
-import {
+import { Inject,
   BadRequestException,
   Injectable,
   NotFoundException,
@@ -11,7 +11,8 @@ import { ERROR_CODES } from "../../common/constants/error-codes.js";
 
 @Injectable()
 export class CriteriaService {
-  constructor(private readonly prisma: PrismaService) {}
+  /** Inject dependency tường minh theo mẫu Auth để cùng luồng DB hoạt động trên tsx và bản build ESM */
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findByPeriod(periodId: string) {
     const criteria = await this.prisma.criterion.findMany({

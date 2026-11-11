@@ -1,6 +1,9 @@
+import { ApiArrayValidationPipe } from "../../common/pipes/api-validation.pipe.js";
+import { createApiValidationPipe } from "../../common/pipes/api-validation.pipe.js";
 import {
   Body,
   Controller,
+  Inject,
   Delete,
   Get,
   Param,
@@ -13,6 +16,7 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -32,13 +36,15 @@ import { EvaluationPeriodsService } from "./evaluation-periods.service.js";
 @Controller("api/v1/evaluation-periods")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class EvaluationPeriodsController {
-  constructor(private readonly evaluationPeriodsService: EvaluationPeriodsService) {}
+  /** Inject dependency tường minh theo mẫu Auth để cùng luồng DB hoạt động trên tsx và bản build ESM */
+  constructor(@Inject(EvaluationPeriodsService) private readonly evaluationPeriodsService: EvaluationPeriodsService) {}
 
   @Get()
   @Roles("ADMIN", "UNIT")
   @ApiOperation({ summary: "Danh sách đợt đánh giá" })
   @ApiResponse({ status: 200, description: "Danh sách đợt đánh giá kèm ngưỡng xếp loại" })
-  findAll(@Query() query: PaginationQueryDto) {
+  /** Validate query phân trang và bộ lọc qua DTO tường minh để cả tsx và bản build trả lỗi trường đúng giao ước */
+  findAll(@Query(createApiValidationPipe(PaginationQueryDto)) query: PaginationQueryDto) {
     return this.evaluationPeriodsService.findAll(query);
   }
 
@@ -55,7 +61,8 @@ export class EvaluationPeriodsController {
   @Roles("ADMIN")
   @ApiOperation({ summary: "Tạo đợt đánh giá" })
   @ApiResponse({ status: 201, description: "Tạo đợt đánh giá thành công" })
-  create(@GetCurrentUser() user: CurrentUser, @Body() dto: CreateEvaluationPeriodDto) {
+  /** Validate DTO tạo mới và từ chối field ngoài giao ước trước khi chuyển dữ liệu tới service thực hiện quyền ghi */
+  create(@GetCurrentUser() user: CurrentUser, @Body(createApiValidationPipe(CreateEvaluationPeriodDto)) dto: CreateEvaluationPeriodDto) {
     return this.evaluationPeriodsService.create(user.id, dto);
   }
 
@@ -64,9 +71,10 @@ export class EvaluationPeriodsController {
   @ApiOperation({ summary: "Cập nhật đợt đánh giá" })
   @ApiResponse({ status: 200, description: "Cập nhật đợt đánh giá thành công" })
   @ApiResponse({ status: 404, description: "Không tìm thấy đợt đánh giá" })
+  /** Validate DTO cập nhật cùng mã tài nguyên đã qua pipe, chỉ giao phần dữ liệu hợp lệ cho service kiểm nghiệp vụ */
   update(
     @Param("id", ParseUUIDPipe) id: string,
-    @Body() dto: UpdateEvaluationPeriodDto,
+    @Body(createApiValidationPipe(UpdateEvaluationPeriodDto)) dto: UpdateEvaluationPeriodDto,
   ) {
     return this.evaluationPeriodsService.update(id, dto);
   }
@@ -82,12 +90,14 @@ export class EvaluationPeriodsController {
   }
 
   @Put(":id/thresholds")
+  @ApiBody({ type: [UpsertRatingThresholdDto] })
   @Roles("ADMIN")
   @ApiOperation({ summary: "Tạo hoặc cập nhật ngưỡng xếp loại" })
   @ApiResponse({ status: 200, description: "Cập nhật ngưỡng xếp loại thành công" })
+  /** Giữ body là mảng ngưỡng, validate từng phần tử kèm chỉ số trước transaction để không ghi dữ liệu sai cấu trúc */
   upsertThresholds(
     @Param("id", ParseUUIDPipe) id: string,
-    @Body() thresholds: UpsertRatingThresholdDto[],
+    @Body(new ApiArrayValidationPipe(UpsertRatingThresholdDto)) thresholds: UpsertRatingThresholdDto[],
   ) {
     return this.evaluationPeriodsService.upsertThresholds(id, thresholds);
   }

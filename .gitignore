@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+be/report-exports/
 .pnpm-store/
 
 # Environment Variables (Bảo mật thông tin nhạy cảm)

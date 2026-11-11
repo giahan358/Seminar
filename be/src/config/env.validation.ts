@@ -19,6 +19,9 @@ export const envValidationSchema = Joi.object({
   WEB_PUSH_VAPID_PRIVATE_KEY: Joi.string().required(),
   WEB_PUSH_SUBJECT: Joi.string().required(),
 
+  REPORT_EXPORT_DIR: Joi.string().optional(),
+  REPORT_EXPORT_FONT_PATH: Joi.string().optional(),
+
   // Dữ liệu khởi tạo
   SEED_CREDENTIALS_FILE: Joi.string().default(".seed-credentials.json"),
 }).or("WEB_ORIGINS", "CORS_ORIGINS");

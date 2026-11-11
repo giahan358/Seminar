@@ -16,4 +16,10 @@ export const userService = {
   toggleUserStatus: (id, isActive) => {
     return apiClient.patch(`/users/${id}`, { isActive });
   },
+  importUsers: (data) => {
+    // Gửi mảng danh sách user lên Backend
+    return apiClient.post("/users/import", { users: data });
+  },
+
 };
+

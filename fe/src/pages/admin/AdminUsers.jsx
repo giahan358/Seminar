@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Table, message, Space, Button, Tooltip, Modal, Form, Input, Select, Tag } from "antd";
-import { EditOutlined, LockOutlined, UnlockOutlined } from "@ant-design/icons";
+import { Table, message, Space, Button, Tooltip, Modal, Form, Input, Select, Tag, Upload } from "antd";
+import { EditOutlined, LockOutlined, UnlockOutlined, UploadOutlined } from "@ant-design/icons";
 import { userService } from "../../services/userService";
 import PageHeader from "../../components/common/PageHeader";
 import UserStatusTag from "../../components/common/UserStatusTag";
 import styles from "./AdminUsers.module.css"; 
+import ExcelJS from "exceljs";
 
 export default function AdminUsers() {
   // --- STATE QUẢN LÝ DỮ LIỆU ---
@@ -81,6 +82,72 @@ export default function AdminUsers() {
     }
   };
 
+    // Hàm xử lý đọc file Excel bằng exceljs
+  const handleImportExcel = async (file) => {
+    try {
+      setLoading(true);
+      // Đọc file dưới dạng ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
+      
+      // Lấy sheet đầu tiên trong file
+      const worksheet = workbook.worksheets[0];
+      if (!worksheet) {
+        return message.error("File Excel không có dữ liệu!");
+      }
+
+      const jsonData = [];
+      const headers = [];
+
+      // Lấy tên các cột ở hàng đầu tiên (VD: username, fullName, role...)
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.value; 
+      });
+
+      // Duyệt từ hàng thứ 2 trở đi để lấy dữ liệu
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Bỏ qua hàng tiêu đề
+
+        const rowData = {};
+        let hasData = false; // Cờ kiểm tra xem hàng này có dữ liệu không
+
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          const header = headers[colNumber];
+          if (header) {
+            // Lấy giá trị ô, nếu trống thì để chuỗi rỗng
+            rowData[header] = cell.value !== null ? String(cell.value).trim() : "";
+            if (rowData[header] !== "") hasData = true;
+          }
+        });
+
+        // Chỉ thêm vào mảng nếu hàng đó có ít nhất 1 ô có dữ liệu
+        if (hasData) {
+          jsonData.push(rowData);
+        }
+      });
+
+      if (jsonData.length === 0) {
+        return message.error("Không tìm thấy dữ liệu hợp lệ trong file Excel!");
+      }
+
+      // Gửi mảng dữ liệu lên API Backend
+      const res = await userService.importUsers(jsonData);
+      
+      message.success(res.message || `Đã import thành công ${jsonData.length} tài khoản!`);
+      fetchUsers(1, pageSize, ""); // Tải lại bảng danh sách
+      
+    } catch (error) {
+      console.error(error);
+      message.error("Lỗi khi đọc file Excel. Vui lòng kiểm tra lại định dạng file!");
+    } finally {
+      setLoading(false);
+    }
+    
+    return false; // Chặn Ant Design tự động upload file lên server
+  };
+
   // --- CẤU HÌNH CỘT CHO BẢNG ---
   const columns = [
     { 
@@ -151,6 +218,16 @@ export default function AdminUsers() {
           onAdd={() => setIsModalOpen(true)}
           addButtonText="Thêm tài khoản"
         />
+        <Upload
+          accept=".xlsx, .xls"
+          showUploadList={false}
+          beforeUpload={handleImportExcel}
+        >
+          <Button type="default" icon={<UploadOutlined />} style={{ marginLeft: 8, height: 40, borderRadius: 8 }}>
+            Import Excel
+          </Button>
+        </Upload>
+
       </div>
 
       {/* 2. BẢNG DỮ LIỆU */}

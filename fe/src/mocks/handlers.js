@@ -333,6 +333,19 @@ export const handlers = [
     }, { status: 201 });
   }),
 
+    // ---------- IMPORT USERS ----------
+  http.post("*/api/v1/users/import", async ({ request }) => {
+    const body = await request.json();
+    
+    // Giả lập Backend nhận 10 user và trả về thành công
+    return HttpResponse.json({
+      success: true,
+      importedCount: body.users.length,
+      message: `Đã import thành công ${body.users.length} tài khoản.`,
+    });
+  }),
+
+
   // ---------- EVALUATION PERIODS ----------
   http.get("*/api/v1/evaluation-periods", ({ request }) => {
     const url = new URL(request.url);

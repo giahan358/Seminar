@@ -333,7 +333,7 @@
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "UUID của TÀI KHOẢN: lấy từ GET /users, ở trường id của từng dòng (không phải unitId)",
+            "description": "UUID của TÀI KHOẢN: lấy từ GET /users, ở trường id của từng dòng (không phải unitId",
             "schema": {
               "format": "uuid"
             }
@@ -923,6 +923,103 @@
           "Audit Logs"
         ]
       }
+    },
+    "/api/v1/admin/exports": {
+      "post": {
+        "operationId": "ExportsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportExportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Thông tin báo cáo vừa tạo"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Tạo báo cáo Excel, PDF hoặc Word",
+        "tags": [
+          "Report Exports"
+        ]
+      },
+      "get": {
+        "operationId": "ExportsController_findAll",
+        "parameters": [
+          {
+            "name": "periodId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Danh sách lịch sử xuất báo cáo",
+        "tags": [
+          "Report Exports"
+        ]
+      }
+    },
+    "/api/v1/admin/exports/{id}/download": {
+      "get": {
+        "operationId": "ExportsController_download",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Tải tệp báo cáo",
+        "tags": [
+          "Report Exports"
+        ]
+      }
+    },
+    "/api/v1/admin/exports/{id}": {
+      "get": {
+        "operationId": "ExportsController_findOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Xem metadata của một lần xuất báo cáo",
+        "tags": [
+          "Report Exports"
+        ]
+      }
     }
   },
   "info": {
@@ -1141,6 +1238,55 @@
             "type": "boolean"
           }
         }
+      },
+      "ReportType": {
+        "type": "string",
+        "enum": [
+          "SUMMARY_ALL_UNITS",
+          "UNIT_APPRAISAL_MINUTES"
+        ]
+      },
+      "ReportFormat": {
+        "type": "string",
+        "enum": [
+          "XLSX",
+          "PDF",
+          "DOCX"
+        ]
+      },
+      "CreateReportExportDto": {
+        "type": "object",
+        "properties": {
+          "periodId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID đợt đánh giá"
+          },
+          "evaluationId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Bắt buộc với UNIT_APPRAISAL_MINUTES; không được gửi với SUMMARY_ALL_UNITS"
+          },
+          "reportType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportType"
+              }
+            ]
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportFormat"
+              }
+            ]
+          }
+        },
+        "required": [
+          "periodId",
+          "reportType",
+          "format"
+        ]
       },
       "ApiError": {
         "type": "object",

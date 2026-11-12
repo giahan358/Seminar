@@ -33,6 +33,7 @@ export default function AdminLayout() {
     "/admin/config": "Cấu hình Kỳ thi",
     "/admin/records": "Xử lý Hồ sơ",
     "/admin/audit-log": "Lịch sử thao tác",
+    "/admin/notifications": "Thông báo",
   };
   const currentTitle = pageTitles[location.pathname] || "";
 
@@ -43,6 +44,7 @@ export default function AdminLayout() {
     { key: "/admin/config", icon: <SettingOutlined />, label: "Cấu hình Kỳ thi" },
     { key: "/admin/records", icon: <FileTextOutlined />, label: "Xử lý Hồ sơ" },
     { key: "/admin/audit-log", icon: <HistoryOutlined />, label: "Lịch sử thao tác" },
+    { key: "/admin/notifications", icon: <BellOutlined />, label: "Thông báo" },
   ];
 
   const userMenu = {

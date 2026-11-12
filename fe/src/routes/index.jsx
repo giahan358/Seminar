@@ -7,12 +7,13 @@ import AdminUsers from "../pages/admin/AdminUsers";
 import AdminUnits from "../pages/admin/AdminUnits";
 import AdminAuditLog from "../pages/admin/AdminAuditLog";
 import AdminConfig from "../pages/admin/AdminConfig";
-// 1. Import AdminLayout vào
+import AdminRecords from "../pages/admin/AdminRecords";
+import AdminRecordReview from "../pages/admin/AdminRecordReview";
+import UnitEvaluation from "../pages/unit/UnitEvaluation";
+import NotificationInbox from "../pages/shared/NotificationInbox";
 import AdminLayout from "../layouts/AdminLayout";
+import UnitLayout from "../layouts/UnitLayout";
 
-// Tạm thời tạo các trang giả để test Layout
-const AdminRecords = () => <div style={{ fontSize: 24, fontWeight: "bold" }}>Xử lý Hồ sơ</div>;
-const UnitRecords = () => <div style={{ padding: 20 }}>Trang tự chấm của UNIT</div>;
 const Forbidden = () => <div style={{ padding: 20, color: "red" }}>403 - Bạn không có quyền truy cập!</div>;
 
 export default function AppRoutes() {
@@ -39,13 +40,18 @@ export default function AppRoutes() {
               <Route path="/admin/units" element={<AdminUnits />} />
               <Route path="/admin/config" element={<AdminConfig />} />
               <Route path="/admin/records" element={<AdminRecords />} />
+              <Route path="/admin/records/:evaluationId" element={<AdminRecordReview />} />
               <Route path="/admin/audit-log" element={<AdminAuditLog />} />
+              <Route path="/admin/notifications" element={<NotificationInbox />} />
             </Route>
           </Route>
 
           {/* ================= KHU VỰC UNIT ================= */}
           <Route element={<RequireRole roles={["UNIT"]} />}>
-            <Route path="/unit/records" element={<UnitRecords />} />
+            <Route element={<UnitLayout />}>
+              <Route path="/unit/evaluation" element={<UnitEvaluation />} />
+              <Route path="/unit/notifications" element={<NotificationInbox />} />
+            </Route>
           </Route>
 
         </Route>

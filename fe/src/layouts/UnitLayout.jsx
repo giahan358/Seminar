@@ -67,17 +67,12 @@ export default function UnitLayout() {
 
           {/* Bên phải */}
           <div className={styles.headerRight}>
-            <Button
-              type="dashed"
-              size="small"
-              onClick={() => navigate("/admin/dashboard")}
-              style={{ color: "#fa8c16", borderColor: "#fa8c16" }}
-            >
-              Chuyển sang ADMIN
-            </Button>
-
             <Badge count={0} size="small">
-              <Button type="text" icon={<BellOutlined style={{ fontSize: 18, color: "#555" }} />} onClick={() => navigate("/unit/notifications")} />
+              <Button
+                type="text"
+                icon={<BellOutlined style={{ fontSize: 18, color: "#555" }} />}
+                onClick={() => navigate("/unit/notifications")}
+              />
             </Badge>
 
             <Dropdown menu={userMenu} placement="bottomRight" trigger={["click"]}>
@@ -95,7 +90,6 @@ export default function UnitLayout() {
             <Outlet />
           </div>
         </Content>
-
       </Layout>
     </Layout>
   );

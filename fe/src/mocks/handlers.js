@@ -66,6 +66,106 @@ function unauthorized(code = "UNAUTHORIZED", message = "Token không hợp lệ"
   );
 }
 
+// ================= MOCK DATA CHO LUỒNG HỒ SƠ THI ĐUA =================
+
+// Tiêu chí mẫu
+const MOCK_CRITERIA = [
+  { criterionId: "crit-1", code: "1.1", name: "Công tác tuyên truyền, giáo dục chính trị tư tưởng", maxScore: 15, evidenceRequirement: "Báo cáo, hình ảnh", evidenceRequired: true },
+  { criterionId: "crit-2", code: "1.2", name: "Hoạt động tình nguyện, hiến máu", maxScore: 10, evidenceRequirement: "Ảnh minh chứng", evidenceRequired: true },
+  { criterionId: "crit-3", code: "2.1", name: "Phong trào 'Tuổi trẻ sáng tạo'", maxScore: 10, evidenceRequirement: "Báo cáo kết quả", evidenceRequired: true },
+  { criterionId: "crit-4", code: "2.2", name: "Hoạt động văn hóa, thể thao", maxScore: 10, evidenceRequirement: "Kế hoạch, hình ảnh", evidenceRequired: false },
+  { criterionId: "crit-5", code: "3.1", name: "Quản lý đoàn viên", maxScore: 15, evidenceRequirement: "Sổ đoàn viên", evidenceRequired: true },
+  { criterionId: "crit-6", code: "3.2", name: "Sinh hoạt chi đoàn định kỳ", maxScore: 10, evidenceRequirement: "Biên bản sinh hoạt", evidenceRequired: true },
+  { criterionId: "crit-7", code: "4.1", name: "Công tác phát triển Đảng viên", maxScore: 15, evidenceRequirement: "Danh sách, quyết định", evidenceRequired: true },
+  { criterionId: "crit-8", code: "4.2", name: "Đào tạo, bồi dưỡng cán bộ Đoàn", maxScore: 10, evidenceRequirement: "Chứng nhận, báo cáo", evidenceRequired: false },
+  { criterionId: "crit-9", code: "5.1", name: "Phối hợp với các tổ chức trong đơn vị", maxScore: 10, evidenceRequirement: "Kế hoạch phối hợp", evidenceRequired: false },
+  { criterionId: "crit-10", code: "5.2", name: "Tham gia công tác xã hội", maxScore: 10, evidenceRequirement: "Báo cáo, hình ảnh", evidenceRequired: true },
+  { criterionId: "crit-11", code: "6.1", name: "Phong trào 'Thanh niên xung kích'", maxScore: 15, evidenceRequirement: "Kế hoạch, báo cáo", evidenceRequired: true },
+  { criterionId: "crit-12", code: "6.2", name: "Chương trình 'Vì đàn em thân yêu'", maxScore: 10, evidenceRequirement: "Hình ảnh, biên bản", evidenceRequired: false },
+  { criterionId: "crit-13", code: "7.1", name: "Công tác xây dựng tổ chức Đoàn", maxScore: 15, evidenceRequirement: "Báo cáo tổng kết", evidenceRequired: true },
+  { criterionId: "crit-14", code: "7.2", name: "Thi đua khen thưởng nội bộ", maxScore: 10, evidenceRequirement: "Quyết định khen thưởng", evidenceRequired: false },
+  { criterionId: "crit-15", code: "8.1", name: "Nộp báo cáo đúng hạn", maxScore: 10, evidenceRequirement: "Xác nhận nộp", evidenceRequired: true },
+];
+
+// Hồ sơ giả cho 34 đơn vị
+const MOCK_EVALUATIONS = Array.from({ length: 34 }).map((_, i) => {
+  const statuses = ["DRAFT", "PENDING_REVIEW", "SUPPLEMENT_REQUESTED", "SUPPLEMENT_SUBMITTED", "FINALIZED"];
+  const status = statuses[i % 5];
+  const selfTotal = Math.floor(Math.random() * 100) + 180;
+  const adminTotal = status === "FINALIZED" ? selfTotal - Math.floor(Math.random() * 30) : null;
+  
+  return {
+    id: `eval-${i + 1}`,
+    periodId: "period-2026",
+    unit: {
+      id: `unit-${i + 1}`,
+      code: `COSO-${String(i + 1).padStart(2, "0")}`,
+      name: `Đoàn cơ sở ${i + 1}`,
+    },
+    status,
+    submittedAt: status !== "DRAFT" ? new Date(Date.now() - i * 86400000).toISOString() : null,
+    supplementDeadline: status === "SUPPLEMENT_REQUESTED" ? new Date(Date.now() + 48 * 3600000).toISOString() : null,
+    selfTotalScore: selfTotal,
+    adminTotalScore: adminTotal,
+    classification: status === "FINALIZED"
+      ? (adminTotal / 300 >= 0.9 ? "EXCELLENT" : adminTotal / 300 >= 0.8 ? "GOOD" : adminTotal / 300 >= 0.65 ? "FAIR" : "AVERAGE")
+      : null,
+    criteria: MOCK_CRITERIA.map((crit, ci) => {
+      const selfScore = Math.min(crit.maxScore, Math.floor(Math.random() * crit.maxScore) + 1);
+      return {
+        ...crit,
+        selfScore,
+        selfNote: ci % 3 === 0 ? "Đã thực hiện đầy đủ theo kế hoạch." : "",
+        adminScore: status === "FINALIZED" || status === "PENDING_REVIEW" ? Math.min(crit.maxScore, selfScore - Math.floor(Math.random() * 3)) : null,
+        adminComment: status === "FINALIZED" ? "Đạt yêu cầu." : null,
+        needsSupplement: status === "SUPPLEMENT_REQUESTED" && ci % 4 === 0,
+        evidences: ci % 2 === 0 ? [
+          { id: `ev-${i}-${ci}-1`, kind: "FILE", fileName: "bao-cao.pdf", mimeType: "application/pdf", sizeBytes: 125000, round: "INITIAL", description: "Báo cáo tổng kết" },
+          { id: `ev-${i}-${ci}-2`, kind: "FILE", fileName: "hinh-anh.jpg", mimeType: "image/jpeg", sizeBytes: 280000, round: "INITIAL", description: "Hình ảnh hoạt động" },
+        ] : ci % 3 === 0 ? [
+          { id: `ev-${i}-${ci}-3`, kind: "LINK", externalUrl: "https://example.com/bai-viet", round: "INITIAL", description: "Bài viết hoạt động" },
+        ] : [],
+      };
+    }),
+  };
+});
+
+// Thông báo giả
+const MOCK_NOTIFICATIONS = Array.from({ length: 30 }).map((_, i) => {
+  const types = ["DEADLINE_REMINDER", "SUPPLEMENT_REQUEST", "SCORE_FINALIZED", "ADMIN_FEEDBACK", "SYSTEM"];
+  const titles = ["Nhắc hạn nộp hồ sơ", "Yêu cầu bổ sung minh chứng", "Điểm đã được chốt", "Phản hồi từ Admin", "Thông báo hệ thống"];
+  const contents = [
+    "Hạn nộp hồ sơ thi đua còn 24 giờ. Vui lòng hoàn tất.",
+    "Admin yêu cầu bổ sung minh chứng cho tiêu chí 1.1, 3.1. Hạn: 48 giờ.",
+    "Hồ sơ thi đua của đơn vị đã được chốt điểm chính thức.",
+    "Admin đã phản hồi về tiêu chí 2.1. Vui lòng xem chi tiết.",
+    "Kỳ thi đua năm 2026 đã được mở. Vui lòng bắt đầu tự chấm.",
+  ];
+  return {
+    id: `notif-${i + 1}`,
+    type: types[i % 5],
+    title: titles[i % 5],
+    content: contents[i % 5],
+    isRead: i > 5,
+    evaluationId: i % 3 === 0 ? `eval-${(i % 34) + 1}` : null,
+    createdAt: new Date(Date.now() - i * 3600000).toISOString(),
+  };
+});
+
+// Feedback giả
+const MOCK_FEEDBACK = [
+  { id: "fb-1", evaluationId: "eval-1", authorId: "u-admin", type: "ADMIN_COMMENT", content: "Tiêu chí 1.1 cần bổ sung thêm báo cáo chi tiết.", createdAt: new Date(Date.now() - 86400000).toISOString() },
+  { id: "fb-2", evaluationId: "eval-1", authorId: "u-coso01", type: "UNIT_REPLY", content: "Đơn vị đã bổ sung tài liệu theo yêu cầu.", createdAt: new Date(Date.now() - 43200000).toISOString() },
+  { id: "fb-3", evaluationId: "eval-1", authorId: "u-admin", type: "ADMIN_COMMENT", content: "Đã nhận được. Cảm ơn đơn vị.", createdAt: new Date(Date.now() - 3600000).toISOString() },
+];
+
+// Status history giả
+const MOCK_STATUS_HISTORY = [
+  { fromStatus: "DRAFT", toStatus: "PENDING_REVIEW", actorId: null, comment: "Hết hạn tự chấm, hệ thống tự khóa.", createdAt: new Date(Date.now() - 7 * 86400000).toISOString() },
+  { fromStatus: "PENDING_REVIEW", toStatus: "SUPPLEMENT_REQUESTED", actorId: "u-admin", comment: "Yêu cầu bổ sung tiêu chí 1.1, 3.1", createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
+  { fromStatus: "SUPPLEMENT_REQUESTED", toStatus: "SUPPLEMENT_SUBMITTED", actorId: "u-coso01", comment: null, createdAt: new Date(Date.now() - 3 * 86400000).toISOString() },
+];
+
 // ================= HANDLERS =================
 
 export const handlers = [
@@ -278,7 +378,7 @@ export const handlers = [
     return HttpResponse.json({ items: data });
   }),
 
-  // ---------- CREATE EVALUATION PERIOD ----------
+
   // ---------- CREATE EVALUATION PERIOD ----------
   http.post("*/api/v1/evaluation-periods", async ({ request }) => {
     const body = await request.json();
@@ -352,5 +452,208 @@ export const handlers = [
       pageSize,
       total: filteredPeriods.length,
     });
+  }),
+
+  // ---------- UNIT: Lấy hồ sơ của đơn vị mình ----------
+  http.get("*/api/v1/evaluations", ({ request }) => {
+    const username = usernameFromAuth(request);
+    const record = username && USERS[username];
+    const unitId = record?.user?.unitId || "unit-01";
+    const unitEvals = MOCK_EVALUATIONS.filter(e => e.unit.id === unitId);
+
+    return HttpResponse.json({
+      items: unitEvals.length > 0 ? unitEvals : [MOCK_EVALUATIONS[0]], // Fallback cho demo
+      total: unitEvals.length || 1,
+      page: 1,
+      pageSize: 20,
+    });
+  }),
+
+  // ---------- Lấy chi tiết 1 hồ sơ ----------
+  http.get("*/api/v1/evaluations/:evaluationId", ({ params }) => {
+    const evaluation = MOCK_EVALUATIONS.find(e => e.id === params.evaluationId);
+    if (!evaluation) {
+      return HttpResponse.json(
+        { statusCode: 404, code: "NOT_FOUND", message: "Không tìm thấy hồ sơ", details: [] },
+        { status: 404 }
+      );
+    }
+    return HttpResponse.json(evaluation);
+  }),
+
+  // ---------- Lưu điểm tự chấm ----------
+  http.put("*/api/v1/evaluations/:evaluationId/scores/:criterionId/self", async ({ request, params }) => {
+    const body = await request.json();
+    return HttpResponse.json({
+      evaluationId: params.evaluationId,
+      criterionId: params.criterionId,
+      selfScore: body.selfScore,
+      selfNote: body.selfNote,
+      updatedAt: new Date().toISOString(),
+    });
+  }),
+
+  // ---------- Upload URLs ----------
+  http.post("*/api/v1/evaluations/:evaluationId/evidences/upload-urls", async ({ request }) => {
+    const body = await request.json();
+    const items = (body.items || []).map((item, i) => ({
+      uploadUrl: `https://storage.example.com/mock-upload-${Date.now()}-${i}`,
+      method: "PUT",
+      requiredHeaders: { "Content-Type": item.mimeType },
+      storagePath: `private/evaluations/mock-${Date.now()}-${i}.${item.fileName.split('.').pop()}`,
+      expiresAt: new Date(Date.now() + 900000).toISOString(),
+    }));
+    return HttpResponse.json({ items });
+  }),
+
+  // ---------- Lưu metadata minh chứng ----------
+  http.post("*/api/v1/evaluations/:evaluationId/evidences", async ({ request }) => {
+    const body = await request.json();
+    const items = (body.items || []).map((item, i) => ({
+      id: `ev-new-${Date.now()}-${i}`,
+      kind: item.kind,
+      fileName: item.fileName,
+      mimeType: item.mimeType,
+      sizeBytes: item.sizeBytes,
+      externalUrl: item.externalUrl,
+      round: item.round,
+      description: item.description,
+      previewStatus: "NOT_REQUIRED",
+      createdAt: new Date().toISOString(),
+    }));
+    return HttpResponse.json({ items }, { status: 201 });
+  }),
+
+  // ---------- Preview minh chứng ----------
+  http.get("*/api/v1/evaluations/:evaluationId/evidences/:evidenceId/preview", ({ params }) => {
+    return HttpResponse.json({
+      url: `https://via.placeholder.com/800x600.png?text=Preview+${params.evidenceId}`,
+      downloadUrl: `https://example.com/download/${params.evidenceId}`,
+    });
+  }),
+
+  // ---------- Nộp bổ sung ----------
+  http.post("*/api/v1/evaluations/:evaluationId/supplement-submit", ({ params }) => {
+    return HttpResponse.json({
+      evaluationId: params.evaluationId,
+      status: "SUPPLEMENT_SUBMITTED",
+    });
+  }),
+
+  // ---------- Feedback ----------
+  http.get("*/api/v1/evaluations/:evaluationId/feedback", ({ params }) => {
+    return HttpResponse.json({
+      items: MOCK_FEEDBACK.filter(fb => fb.evaluationId === params.evaluationId || params.evaluationId === "eval-1"),
+    });
+  }),
+
+  http.post("*/api/v1/evaluations/:evaluationId/feedback", async ({ request, params }) => {
+    const body = await request.json();
+    const newFb = {
+      id: `fb-${Date.now()}`,
+      evaluationId: params.evaluationId,
+      authorId: usernameFromAuth(request) || "u-unknown",
+      type: body.type,
+      content: body.content,
+      createdAt: new Date().toISOString(),
+    };
+    MOCK_FEEDBACK.push(newFb);
+    return HttpResponse.json(newFb, { status: 201 });
+  }),
+
+  // ---------- Status history ----------
+  http.get("*/api/v1/evaluations/:evaluationId/status-history", () => {
+    return HttpResponse.json({ items: MOCK_STATUS_HISTORY });
+  }),
+
+  // ---------- ADMIN: Danh sách hồ sơ ----------
+  http.get("*/api/v1/admin/evaluations", ({ request }) => {
+    const url = new URL(request.url);
+    const periodId = url.searchParams.get("periodId");
+    const status = url.searchParams.get("status");
+    const search = url.searchParams.get("search") || "";
+    const page = Number(url.searchParams.get("page")) || 1;
+    const pageSize = Number(url.searchParams.get("pageSize")) || 20;
+
+    let filtered = MOCK_EVALUATIONS;
+    if (periodId) filtered = filtered.filter(e => e.periodId === periodId);
+    if (status) filtered = filtered.filter(e => e.status === status);
+    if (search) filtered = filtered.filter(e => 
+      e.unit.name.toLowerCase().includes(search.toLowerCase()) ||
+      e.unit.code.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const start = (page - 1) * pageSize;
+    const items = filtered.slice(start, start + pageSize);
+
+    return HttpResponse.json({ items, total: filtered.length, page, pageSize });
+  }),
+
+  // ---------- ADMIN: Chấm điểm ----------
+  http.put("*/api/v1/admin/evaluations/:evaluationId/scores/:criterionId/review", async ({ request, params }) => {
+    const body = await request.json();
+    return HttpResponse.json({
+      evaluationId: params.evaluationId,
+      criterionId: params.criterionId,
+      adminScore: body.adminScore,
+      adminComment: body.adminComment,
+      needsSupplement: body.needsSupplement,
+      reviewedAt: new Date().toISOString(),
+    });
+  }),
+
+  // ---------- ADMIN: Yêu cầu bổ sung ----------
+  http.post("*/api/v1/admin/evaluations/:evaluationId/supplement-request", async ({ request, params }) => {
+    const body = await request.json();
+    return HttpResponse.json({
+      evaluationId: params.evaluationId,
+      status: "SUPPLEMENT_REQUESTED",
+      supplementDeadline: new Date(Date.now() + 48 * 3600000).toISOString(),
+      feedbackId: `fb-${Date.now()}`,
+    });
+  }),
+
+  // ---------- ADMIN: Chốt hồ sơ ----------
+  http.post("*/api/v1/admin/evaluations/:evaluationId/finalize", ({ params }) => {
+    return HttpResponse.json({
+      evaluationId: params.evaluationId,
+      status: "FINALIZED",
+      finalizedAt: new Date().toISOString(),
+    });
+  }),
+
+  // ================= THÔNG BÁO =================
+
+  http.get("*/api/v1/notifications", ({ request }) => {
+    const url = new URL(request.url);
+    const page = Number(url.searchParams.get("page")) || 1;
+    const pageSize = Number(url.searchParams.get("pageSize")) || 20;
+    const isRead = url.searchParams.get("isRead");
+
+    let filtered = [...MOCK_NOTIFICATIONS];
+    if (isRead === "true") filtered = filtered.filter(n => n.isRead);
+    if (isRead === "false") filtered = filtered.filter(n => !n.isRead);
+
+    const start = (page - 1) * pageSize;
+    const items = filtered.slice(start, start + pageSize);
+
+    return HttpResponse.json({ items, total: filtered.length, page, pageSize });
+  }),
+
+  http.patch("*/api/v1/notifications/:notificationId/read", ({ params }) => {
+    const notif = MOCK_NOTIFICATIONS.find(n => n.id === params.notificationId);
+    if (notif) notif.isRead = true;
+    return HttpResponse.json({ isRead: true });
+  }),
+
+  http.post("*/api/v1/notifications/read-all", () => {
+    let count = 0;
+    MOCK_NOTIFICATIONS.forEach(n => { if (!n.isRead) { n.isRead = true; count++; } });
+    return HttpResponse.json({ updated: count });
+  }),
+
+  http.get("*/api/v1/notifications/unread-count", () => {
+    const count = MOCK_NOTIFICATIONS.filter(n => !n.isRead).length;
+    return HttpResponse.json({ count });
   }),
 ];
